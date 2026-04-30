@@ -1,11 +1,10 @@
 # 🏆 Competitive Programming Playground
 
-> *"Every expert was once a beginner. Every pro was once an amateur."*
-
 Grinding through problems one bug at a time. Solutions organized by platform — each problem has its own folder, solution, and test cases.
 
 ![Problems Solved](https://img.shields.io/badge/problems%20solved-getting%20there-brightgreen?style=for-the-badge&logo=target)
 ![Language](https://img.shields.io/badge/language-C%2B%2B%20only-blue?style=for-the-badge&logo=cplusplus)
+![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?style=for-the-badge&logo=apple)
 ![Mood](https://img.shields.io/badge/mood-caffeinated-orange?style=for-the-badge&logo=coffeescript)
 
 ---
@@ -125,9 +124,3 @@ source ~/.zshrc
 After adding a new problem → **Tools → CMake → Reload CMake Project** → pick your target → run. Done.
 
 ---
-
-<div align="center">
-
-*Keep grinding. The ACs will come.* 💪
-
-</div>

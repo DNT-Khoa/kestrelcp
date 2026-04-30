@@ -79,17 +79,14 @@ def main() -> None:
     problem = args.problem
     problem_path = f"{platform}/{problem}"
     problem_dir = os.path.join(SCRIPT_DIR, platform, problem)
-    solution_py = os.path.join(problem_dir, "solution.py")
     solution_cpp = os.path.join(problem_dir, "solution.cpp")
 
-    if os.path.isfile(solution_py):
-        cmd = [sys.executable, solution_py]
-    elif os.path.isfile(solution_cpp):
-        binary = compile_cpp(solution_cpp, problem_path)
-        cmd = [binary]
-    else:
-        print(f"No solution.py or solution.cpp found in: {problem_dir}")
+    if not os.path.isfile(solution_cpp):
+        print(f"No solution.cpp found in: {problem_dir}")
         sys.exit(1)
+
+    binary = compile_cpp(solution_cpp, problem_path)
+    cmd = [binary]
 
     in_files = sorted(glob.glob(os.path.join(problem_dir, "*.in")))
     if not in_files:

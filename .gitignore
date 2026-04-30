@@ -1,0 +1,25 @@
+# Build artifacts
+cmake-build-debug/
+cmake-build-release/
+build/
+.cmake/
+
+# Compiled binaries (files with no extension in problem dirs)
+kattis/*/solution
+codeforces/*/solution
+leetcode/*/solution
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Compiled binaries (no extension)
+playground/main
+
+# Claude Code local settings
+.claude/
+
+# Python
+__pycache__/
+*.pyc

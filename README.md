@@ -22,7 +22,8 @@ competitive-programming/
 ├── 🔵 codeforces/
 ├── 🟢 leetcode/
 ├── 🛠️ new.py              ← scaffold a new problem in seconds
-└── 🧪 test.py             ← compile, run, and judge yourself
+├── 🧪 test.py             ← compile, run, and judge yourself
+└── 🤖 commit.py           ← AI-generated commit messages
 ```
 
 ---
@@ -45,7 +46,7 @@ competitive-programming/
 
 ### 2. Write your solution
 
-Open `solution.cpp` (or `solution.py`) and go to war. 🥊
+Open `solution.cpp` and go to war. 🥊
 
 ### 3. Test it
 
@@ -71,6 +72,54 @@ Results: 1 passed, 1 failed
 
 Trailing whitespace and blank lines are ignored — no fake failures over formatting. Each test has a 5s limit before it gets the axe. ⏱️
 
+### 4. Commit your solution
+
+Stage your changes, then let Claude write the commit message:
+
+```bash
+git add kattis/oddecho/solution.cpp
+./commit.py
+```
+
+Claude analyses the diff and suggests a [Conventional Commit](https://www.conventionalcommits.org/) message with an emoji prefix:
+
+```
+  ✨ feat(kattis): solve oddecho with word index filtering
+
+Commit with this message? [Y/n/e]
+```
+
+| Key | Action |
+|-----|--------|
+| `y` / Enter | Commit with the suggested message |
+| `n` | Abort |
+| `e` | Edit the suggestion in place, then press Enter to commit |
+
+Keys are case-insensitive.
+
+**Emoji legend:**
+
+| Emoji | Type | When to use |
+|-------|------|-------------|
+| ✨ | `feat` | New solution or feature |
+| 🐛 | `fix` | Bug fix in a solution |
+| 📝 | `docs` | README or notes update |
+| ♻️ | `refactor` | Rewrite without changing behavior |
+| ✅ | `test` | Adding or fixing test cases |
+| 🔧 | `chore` | Tooling, config, scripts |
+| ⚡️ | `perf` | Performance improvement |
+| 💄 | `style` | Formatting only |
+
+**Setup — Claude AI API key required:**
+
+`commit.py` calls the [Claude API](https://console.anthropic.com/) to generate messages. Get a free API key and add it to your shell:
+
+```bash
+export ANTHROPIC_API_KEY=your-api-key-here
+```
+
+To persist it, add the line above to your `~/.zshrc` and run `source ~/.zshrc`.
+
 ---
 
 ## 🛠️ Scripts Reference
@@ -79,10 +128,12 @@ Trailing whitespace and blank lines are ignored — no fake failures over format
 |--------|-------------|
 | `./new.py <platform> <problem> [url]` | Scaffold a new problem folder + fetch sample tests |
 | `./test.py <platform> <problem>` | Compile/run solution and check against all test cases |
+| `./commit.py` | Generate a conventional commit message from staged changes using Claude AI |
 
-**Dependencies for `new.py`:**
+**Dependencies:**
 ```bash
-pip3 install requests beautifulsoup4
+pip3 install requests beautifulsoup4 anthropic
+export ANTHROPIC_API_KEY=your-key  # required for commit.py
 ```
 
 ---

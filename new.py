@@ -2,14 +2,16 @@
 # PYTHON_ARGCOMPLETE_OK
 """
 Usage:
-  ./new.py <platform> <problem-name>             # just scaffold
-  ./new.py <platform> <problem-name> <url>       # scaffold + fetch sample tests
+  ./new.py <platform> <url>                       # derive folder from URL + fetch tests
+  ./new.py <platform> <problem-name>              # just scaffold (slug-fetch for leetcode)
+  ./new.py <platform> <problem-name> <url>        # scaffold + fetch tests (explicit)
 
 Examples:
-  ./new.py kattis oddecho
-  ./new.py kattis oddecho https://open.kattis.com/problems/oddecho
-  ./new.py codeforces 1A https://codeforces.com/problemset/problem/1/A
-  ./new.py leetcode two-sum
+  ./new.py kattis https://open.kattis.com/problems/oddecho
+  ./new.py codeforces https://codeforces.com/problemset/problem/1/A
+  ./new.py leetcode https://leetcode.com/problems/two-sum/
+  ./new.py leetcode two-sum                       # slug-only shorthand
+  ./new.py kattis oddecho                         # scaffold without fetch
 """
 
 import argparse
@@ -25,11 +27,13 @@ except ImportError:
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 SOLUTION_TEMPLATE = """\
-#include <iostream>
-using namespace std;
+import java.util.*;
 
-int main() {
-    // your code here
+public class Solution {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        // your code here
+    }
 }
 """
 
@@ -78,6 +82,91 @@ def fetch_kattis(url: str) -> tuple[list[tuple[str, str]], str]:
                 lines.append(f"- {el.get_text(' ', strip=True)}")
         description = "\n\n".join(line for line in lines if line.strip())
         description = re.sub(r"\$([^$]+)\$", r"\1", description)
+
+    return samples, description
+
+
+def derive_problem_name(platform: str, url: str) -> str:
+    """Extract a folder-safe problem name from a problem URL."""
+    if platform in ("kattis", "leetcode"):
+        m = re.search(r"/problems/([^/?#]+)", url)
+        if m:
+            return m.group(1)
+    elif platform == "codeforces":
+        m = re.search(r"/(?:problemset/problem|contest)/(\d+)/(?:problem/)?([A-Za-z0-9]+)", url)
+        if m:
+            return f"{m.group(1)}{m.group(2)}"
+    raise ValueError(f"could not derive problem name from URL: {url}")
+
+
+def fetch_leetcode(url: str) -> tuple[list[tuple[str, str]], str]:
+    """Returns (samples, description_md) from a LeetCode problem page.
+
+    Uses LeetCode's public GraphQL endpoint. `exampleTestcases` is already
+    newline-separated, one value per parameter — grouped by params count from
+    `metaData` to form each `.in` file. Outputs are parsed from `<pre>` blocks
+    in the rendered `content` HTML.
+    """
+    import json
+    import requests
+    from bs4 import BeautifulSoup
+
+    m = re.search(r"/problems/([^/]+)", url)
+    if not m:
+        raise ValueError(f"could not extract slug from {url}")
+    slug = m.group(1)
+
+    query = """
+    query questionData($titleSlug: String!) {
+      question(titleSlug: $titleSlug) {
+        content
+        exampleTestcases
+        metaData
+      }
+    }
+    """
+    r = requests.post(
+        "https://leetcode.com/graphql/",
+        json={"query": query, "variables": {"titleSlug": slug}, "operationName": "questionData"},
+        headers={**HEADERS, "Content-Type": "application/json", "Referer": url},
+        timeout=10,
+    )
+    r.raise_for_status()
+    question = (r.json().get("data") or {}).get("question")
+    if not question:
+        raise ValueError(f"no public problem found for slug '{slug}' (premium?)")
+
+    raw_inputs = question.get("exampleTestcases") or ""
+    meta = json.loads(question.get("metaData") or "{}")
+    n_params = max(1, len(meta.get("params", [])))
+
+    lines = raw_inputs.split("\n") if raw_inputs else []
+    inputs = []
+    for i in range(0, len(lines), n_params):
+        chunk = lines[i:i + n_params]
+        if len(chunk) == n_params:
+            inputs.append("\n".join(chunk))
+
+    content_html = question.get("content") or ""
+    soup = BeautifulSoup(content_html, "html.parser")
+
+    outputs = []
+    for pre in soup.select("pre"):
+        t = pre.get_text("\n")
+        mo = re.search(r"Output:\s*(.+?)(?:\n\s*Explanation|\Z)", t, re.DOTALL)
+        if mo:
+            outputs.append(mo.group(1).strip())
+
+    samples = list(zip(inputs, outputs))
+
+    desc_lines = []
+    for el in soup.find_all(["p", "li"]):
+        if el.find_parent("pre"):
+            continue
+        t = el.get_text(" ", strip=True)
+        if t:
+            desc_lines.append(t if el.name == "p" else f"- {t}")
+    description = "\n\n".join(desc_lines)
 
     return samples, description
 
@@ -133,8 +222,11 @@ def scaffold(platform: str, problem: str, url: str | None = None) -> None:
 
     os.makedirs(problem_dir)
 
-    # Write solution.cpp
-    solution_path = os.path.join(problem_dir, "solution.cpp")
+    if url is None and platform == "leetcode":
+        url = f"https://leetcode.com/problems/{problem}/"
+
+    # Write Solution.java
+    solution_path = os.path.join(problem_dir, "Solution.java")
     with open(solution_path, "w") as f:
         f.write(SOLUTION_TEMPLATE)
     print(f"Created: {solution_path}")
@@ -178,6 +270,8 @@ def fetch_page(platform: str, url: str) -> tuple[list[tuple[str, str]], str]:
             return fetch_kattis(url)
         elif platform == "codeforces":
             return fetch_codeforces(url)
+        elif platform == "leetcode":
+            return fetch_leetcode(url)
         else:
             print(f"Note: auto-fetch not supported for '{platform}', skipping.")
             return [], ""
@@ -199,14 +293,27 @@ def main() -> None:
         usage="./new.py <platform> <problem> [url]",
     )
     parser.add_argument("platform", choices=["kattis", "codeforces", "leetcode"])
-    parser.add_argument("problem", help="problem name / slug")
-    parser.add_argument("url", nargs="?", help="problem page URL to auto-fetch sample tests")
+    parser.add_argument("problem_or_url", help="problem name/slug OR a full problem URL")
+    parser.add_argument("url", nargs="?", help="problem page URL (omit if first arg is a URL)")
 
     if argcomplete:
         argcomplete.autocomplete(parser)
 
     args = parser.parse_args()
-    scaffold(args.platform, args.problem, args.url)
+
+    if args.problem_or_url.startswith(("http://", "https://")):
+        if args.url is not None:
+            parser.error("when first arg is a URL, do not pass a second URL")
+        url = args.problem_or_url
+        try:
+            problem = derive_problem_name(args.platform, url)
+        except ValueError as e:
+            parser.error(str(e))
+    else:
+        problem = args.problem_or_url
+        url = args.url
+
+    scaffold(args.platform, problem, url)
 
 
 if __name__ == "__main__":

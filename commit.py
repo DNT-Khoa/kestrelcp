@@ -2,6 +2,7 @@
 """Auto-generate a git commit message from staged changes using Claude."""
 
 import itertools
+import os
 import readline
 import signal
 import subprocess
@@ -9,8 +10,6 @@ import sys
 import threading
 import time
 import anthropic
-
-client = anthropic.Anthropic()
 
 
 def _spin(stop: threading.Event) -> None:
@@ -30,6 +29,15 @@ def run(cmd: list[str]) -> str:
 
 
 def main() -> None:
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print("Error: ANTHROPIC_API_KEY is not set.", file=sys.stderr)
+        print("Get a key at https://console.anthropic.com/ and add it to your shell:", file=sys.stderr)
+        print("  export ANTHROPIC_API_KEY=<your-key>", file=sys.stderr)
+        print("See README.md for setup details.", file=sys.stderr)
+        sys.exit(1)
+
+    client = anthropic.Anthropic()
+
     diff = run(["git", "diff", "--staged"])
     if not diff:
         print("No staged changes. Run `git add` first.")

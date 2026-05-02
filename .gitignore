@@ -1,24 +1,27 @@
-# Build artifacts
-cmake-build-debug/
-cmake-build-release/
-build/
-.cmake/
+# Java compiled classes
+*.class
 
-# Compiled binaries (files with no extension in problem dirs)
-kattis/*/solution
-codeforces/*/solution
-leetcode/*/solution
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
 
 # IDE
 .idea/
 .vscode/
 *.iml
+out/
 
-# Compiled binaries (no extension)
-playground/main
+# macOS
+.DS_Store
 
 # Claude Code local settings
 .claude/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
 
 # Python
 __pycache__/

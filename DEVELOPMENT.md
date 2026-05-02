@@ -154,4 +154,4 @@ git push --follow-tags
 
 The tag push still triggers the release workflow.
 
-> **Distribution model**: VS Code Marketplace is all-or-nothing public, so private extensions live on GitHub Releases. Auto-updates aren't supported for sideloaded extensions — re-install for new versions, or graduate to a self-hosted private marketplace ([`coder/code-marketplace`](https://github.com/coder/code-marketplace)) if that becomes painful.
+> **Distribution model**: Sheikah currently ships as a `.vsix` on GitHub Releases. Sideloaded extensions don't auto-update — users re-install for new versions. Publishing to the [VS Code Marketplace](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) is the natural next step once usage justifies it; that gives users in-editor auto-updates and discovery.

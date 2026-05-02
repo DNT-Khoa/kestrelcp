@@ -30,7 +30,7 @@ Sheikah is a thin GUI on top of three Python scripts (`new.py`, `test.py`, `comm
 
 ## 🚀 Install
 
-Sheikah ships as a `.vsix` attached to GitHub releases (not on the public marketplace). Install with:
+Sheikah ships as a `.vsix` attached to GitHub releases (not yet on the VS Code Marketplace). Install with:
 
 ```bash
 code --install-extension sheikah-X.Y.Z.vsix

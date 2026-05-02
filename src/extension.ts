@@ -17,11 +17,12 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('sheikah.runTests',           (item?: Item) => runTests(item)),
     vscode.commands.registerCommand('sheikah.runTestsForCurrent', () => runTestsForCurrent()),
     vscode.commands.registerCommand('sheikah.aiCommit',           () => aiCommit()),
+    vscode.commands.registerCommand('sheikah.runPlayground',      () => runPlayground()),
     vscode.commands.registerCommand('sheikah.refreshProblems',    () => provider.refresh()),
   );
 
   if (vscode.workspace.workspaceFolders?.[0]) {
-    const watcher = vscode.workspace.createFileSystemWatcher('**/Solution.java');
+    const watcher = vscode.workspace.createFileSystemWatcher('**/{Solution,Playground}.java');
     watcher.onDidCreate(() => provider.refresh());
     watcher.onDidDelete(() => provider.refresh());
     context.subscriptions.push(watcher);
@@ -80,12 +81,34 @@ async function initWorkspace(provider: ProblemsTreeProvider) {
     const dir = path.join(root, p);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   }
+  ensurePlayground(root);
   vscode.window.showInformationMessage(
     copied > 0
       ? `Sheikah initialized (${copied} script(s) copied).`
       : 'Sheikah already initialized.',
   );
   provider.refresh();
+}
+
+const PLAYGROUND_TEMPLATE = `public class Playground {
+    public static void main(String[] args) {
+        System.out.println("Hello from Sheikah playground.");
+    }
+}
+`;
+
+function ensurePlayground(root: string) {
+  const dir = path.join(root, 'playground');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, 'Playground.java');
+  if (!fs.existsSync(file)) fs.writeFileSync(file, PLAYGROUND_TEMPLATE);
+}
+
+async function runPlayground() {
+  const root = workspaceRoot();
+  if (!root) return;
+  ensurePlayground(root);
+  await runInTerminal('( cd playground && javac *.java && java Playground )');
 }
 
 async function newProblem(provider: ProblemsTreeProvider) {

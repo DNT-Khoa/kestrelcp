@@ -22,9 +22,26 @@ export class ProblemsTreeProvider implements vscode.TreeDataProvider<Item> {
       ?? ['kattis', 'codeforces', 'leetcode'];
 
     if (!element) {
-      return platforms
-        .filter(p => fs.existsSync(path.join(root, p)))
-        .map(p => new Item(p, vscode.TreeItemCollapsibleState.Collapsed, 'platform', p));
+      const items: Item[] = [];
+
+      const playgroundFile = path.join(root, 'playground', 'Playground.java');
+      if (fs.existsSync(playgroundFile)) {
+        const pg = new Item('Playground', vscode.TreeItemCollapsibleState.None, 'playground', 'playground');
+        pg.command = {
+          command: 'vscode.open',
+          title: 'Open Playground',
+          arguments: [vscode.Uri.file(playgroundFile)],
+        };
+        items.push(pg);
+      }
+
+      for (const p of platforms) {
+        if (fs.existsSync(path.join(root, p))) {
+          items.push(new Item(p, vscode.TreeItemCollapsibleState.Collapsed, 'platform', p));
+        }
+      }
+
+      return items;
     }
 
     if (element.contextValue === 'platform') {
@@ -61,13 +78,15 @@ export class Item extends vscode.TreeItem {
   constructor(
     label: string,
     state: vscode.TreeItemCollapsibleState,
-    public override contextValue: 'platform' | 'problem',
+    public override contextValue: 'platform' | 'problem' | 'playground',
     public platform: string,
     public problem?: string,
   ) {
     super(label, state);
     this.iconPath = contextValue === 'platform'
       ? new vscode.ThemeIcon('folder')
-      : new vscode.ThemeIcon('file-code');
+      : contextValue === 'playground'
+        ? new vscode.ThemeIcon('beaker')
+        : new vscode.ThemeIcon('file-code');
   }
 }

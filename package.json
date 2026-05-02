@@ -4,6 +4,7 @@
   "description": "Scaffold, test, and commit competitive programming solutions for Kattis, Codeforces, and LeetCode.",
   "version": "0.1.0",
   "publisher": "khoa",
+  "icon": "media/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/DNT-Khoa/competitive-programming"
@@ -23,11 +24,12 @@
       { "command": "sheikah.runTests",            "title": "Sheikah: Run Tests",                   "icon": "$(play)" },
       { "command": "sheikah.runTestsForCurrent",  "title": "Sheikah: Run Tests for Current File" },
       { "command": "sheikah.aiCommit",            "title": "Sheikah: AI Commit" },
+      { "command": "sheikah.runPlayground",       "title": "Sheikah: Run Playground",              "icon": "$(play-circle)" },
       { "command": "sheikah.refreshProblems",     "title": "Sheikah: Refresh Problems",            "icon": "$(refresh)" }
     ],
     "viewsContainers": {
       "activitybar": [
-        { "id": "sheikah", "title": "Sheikah", "icon": "$(eye)" }
+        { "id": "sheikah", "title": "Sheikah", "icon": "$(rocket)" }
       ]
     },
     "views": {
@@ -41,7 +43,8 @@
         { "command": "sheikah.refreshProblems", "when": "view == sheikah.problems", "group": "navigation@2" }
       ],
       "view/item/context": [
-        { "command": "sheikah.runTests", "when": "view == sheikah.problems && viewItem == problem", "group": "inline" }
+        { "command": "sheikah.runTests",      "when": "view == sheikah.problems && viewItem == problem",    "group": "inline" },
+        { "command": "sheikah.runPlayground", "when": "view == sheikah.problems && viewItem == playground", "group": "inline" }
       ]
     },
     "configuration": {

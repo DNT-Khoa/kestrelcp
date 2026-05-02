@@ -18,3 +18,6 @@ out/
 # Python (used by bundled scripts during development)
 __pycache__/
 *.pyc
+
+# Java compile output (playground / problem solutions)
+*.class

@@ -36,11 +36,10 @@ def normalize(text: str) -> str:
     return "\n".join(line.rstrip() for line in text.splitlines() if line.strip())
 
 
-def compile_cpp(solution_cpp: str, problem_path: str) -> str:
-    binary = os.path.join(tempfile.gettempdir(), "cp_" + problem_path.replace("/", "_"))
-    print(f"Compiling {problem_path}... ", end="", flush=True)
+def compile_java(solution_java: str, out_dir: str) -> None:
+    print(f"Compiling... ", end="", flush=True)
     result = subprocess.run(
-        ["g++", "-O2", "-std=c++20", "-Wall", "-o", binary, solution_cpp],
+        ["javac", "-d", out_dir, solution_java],
         capture_output=True, text=True,
     )
     if result.returncode != 0:
@@ -48,13 +47,15 @@ def compile_cpp(solution_cpp: str, problem_path: str) -> str:
         print(result.stderr)
         sys.exit(1)
     print("OK\n")
-    return binary
 
 
-def run_case(cmd: list[str], in_file: str) -> tuple[str | None, str]:
+def run_case(classpath: str, in_file: str) -> tuple[str | None, str]:
     try:
         with open(in_file) as f:
-            result = subprocess.run(cmd, stdin=f, capture_output=True, text=True, timeout=TIMEOUT)
+            result = subprocess.run(
+                ["java", "-cp", classpath, "Solution"],
+                stdin=f, capture_output=True, text=True, timeout=TIMEOUT,
+            )
         if result.returncode != 0:
             return None, f"error:{result.returncode}"
         return result.stdout, "ok"
@@ -77,64 +78,63 @@ def main() -> None:
     args = parser.parse_args()
     platform = args.platform
     problem = args.problem
-    problem_path = f"{platform}/{problem}"
     problem_dir = os.path.join(SCRIPT_DIR, platform, problem)
-    solution_cpp = os.path.join(problem_dir, "solution.cpp")
+    solution_java = os.path.join(problem_dir, "Solution.java")
 
-    if not os.path.isfile(solution_cpp):
-        print(f"No solution.cpp found in: {problem_dir}")
+    if not os.path.isfile(solution_java):
+        print(f"No Solution.java found in: {problem_dir}")
         sys.exit(1)
 
-    binary = compile_cpp(solution_cpp, problem_path)
-    cmd = [binary]
+    with tempfile.TemporaryDirectory() as out_dir:
+        compile_java(solution_java, out_dir)
 
-    in_files = sorted(glob.glob(os.path.join(problem_dir, "*.in")))
-    if not in_files:
-        print(f"No *.in files found in {problem_dir}")
-        sys.exit(1)
+        in_files = sorted(glob.glob(os.path.join(problem_dir, "*.in")))
+        if not in_files:
+            print(f"No *.in files found in {problem_dir}")
+            sys.exit(1)
 
-    passed = failed = no_expected = 0
+        passed = failed = no_expected = 0
 
-    for in_file in in_files:
-        case = os.path.splitext(os.path.basename(in_file))[0]
-        out_file = in_file[:-3] + ".out"
+        for in_file in in_files:
+            case = os.path.splitext(os.path.basename(in_file))[0]
+            out_file = in_file[:-3] + ".out"
 
-        actual, status = run_case(cmd, in_file)
+            actual, status = run_case(out_dir, in_file)
 
-        if status == "timeout":
-            print(f"Test {case}: TIMEOUT (>{TIMEOUT}s)")
-            failed += 1
-            continue
-        if status.startswith("error:"):
-            print(f"Test {case}: RUNTIME ERROR (exit {status.split(':')[1]})")
-            failed += 1
-            continue
+            if status == "timeout":
+                print(f"Test {case}: TIMEOUT (>{TIMEOUT}s)")
+                failed += 1
+                continue
+            if status.startswith("error:"):
+                print(f"Test {case}: RUNTIME ERROR (exit {status.split(':')[1]})")
+                failed += 1
+                continue
 
-        if not os.path.isfile(out_file) or os.path.getsize(out_file) == 0:
-            print(f"Test {case}: (no expected output — actual output:)")
-            print(actual)
-            no_expected += 1
-            continue
+            if not os.path.isfile(out_file) or os.path.getsize(out_file) == 0:
+                print(f"Test {case}: (no expected output — actual output:)")
+                print(actual)
+                no_expected += 1
+                continue
 
-        with open(out_file) as f:
-            expected = f.read()
+            with open(out_file) as f:
+                expected = f.read()
 
-        if normalize(actual) == normalize(expected):
-            print(f"Test {case}: PASS")
-            passed += 1
-        else:
-            print(f"Test {case}: FAIL")
-            print("  --- expected ---")
-            for line in expected.splitlines()[:10]:
-                print(f"  {line}")
-            print("  --- actual ---")
-            for line in actual.splitlines()[:10]:
-                print(f"  {line}")
-            failed += 1
+            if normalize(actual) == normalize(expected):
+                print(f"Test {case}: PASS")
+                passed += 1
+            else:
+                print(f"Test {case}: FAIL")
+                print("  --- expected ---")
+                for line in expected.splitlines()[:10]:
+                    print(f"  {line}")
+                print("  --- actual ---")
+                for line in actual.splitlines()[:10]:
+                    print(f"  {line}")
+                failed += 1
 
-    suffix = f", {no_expected} without expected output" if no_expected else ""
-    print(f"\nResults: {passed} passed, {failed} failed{suffix}")
-    sys.exit(0 if failed == 0 else 1)
+        suffix = f", {no_expected} without expected output" if no_expected else ""
+        print(f"\nResults: {passed} passed, {failed} failed{suffix}")
+        sys.exit(0 if failed == 0 else 1)
 
 
 if __name__ == "__main__":

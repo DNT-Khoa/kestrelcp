@@ -10,8 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -34,7 +37,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -z "$PREV_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="$PREV_TAG..HEAD"
+          fi
+
+          CHANGELOG=$(git log $RANGE --pretty=format:"- %s" --no-merges)
+
+          NOTES="## Install\n\`\`\`bash\ncode --install-extension sheikah-${VERSION}.vsix\n\`\`\`\n\n## Changes\n${CHANGELOG}"
+
           gh release create "$GITHUB_REF_NAME" \
             "sheikah-${VERSION}.vsix" \
             --title "Sheikah ${VERSION}" \
-            --notes "Install: \`code --install-extension sheikah-${VERSION}.vsix\`"
+            --notes "$NOTES"

@@ -24,6 +24,7 @@ sheikah/
 │   └── icon.png              ← 256×256 marketplace logo
 ├── .vscode/{launch,tasks}.json   ← F5 to debug
 └── .github/workflows/
+    ├── bump-version.yml      ← manual: bumps package.json + pushes vX.Y.Z tag
     ├── release-extension.yml ← tag v* → builds .vsix → makes release
     └── scraper-canary.yml    ← weekly check that Kattis/CF/LC scrapers still work
 ```
@@ -129,17 +130,28 @@ python3 tests/canary.py
 
 ## 📦 Release
 
-Tag the repo with `vX.Y.Z` and push:
+Releases are driven by two chained workflows — no local tagging required.
 
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+1. Push your changes to `main`.
+2. GitHub → **Actions** → **Bump version and tag** → **Run workflow**, branch `main`, pick `patch` / `minor` / `major`.
+   - Bumps `version` in `package.json`, commits as `chore: release vX.Y.Z`, creates tag `vX.Y.Z`, pushes both.
+3. The pushed tag triggers **Release VS Code Extension**, which builds `sheikah-X.Y.Z.vsix` and attaches it to a new GitHub release.
 
-The **Release VS Code Extension** workflow builds `sheikah-X.Y.Z.vsix` and attaches it to a GitHub release. Keep the repo private to limit access; install with:
+Pull `main` afterward to get the bump commit locally.
 
 ```bash
 code --install-extension sheikah-X.Y.Z.vsix
 ```
+
+### Manual fallback
+
+If the bump workflow ever can't push (e.g. branch protection rules added later), tag locally:
+
+```bash
+npm version patch -m "chore: release v%s"   # bumps package.json, commits, tags
+git push --follow-tags
+```
+
+The tag push still triggers the release workflow.
 
 > **Distribution model**: VS Code Marketplace is all-or-nothing public, so private extensions live on GitHub Releases. Auto-updates aren't supported for sideloaded extensions — re-install for new versions, or graduate to a self-hosted private marketplace ([`coder/code-marketplace`](https://github.com/coder/code-marketplace)) if that becomes painful.

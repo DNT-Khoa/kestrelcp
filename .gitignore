@@ -1,18 +1,10 @@
-# Java compiled classes
-*.class
-
-# Gradle
-.gradle/
-build/
-!gradle/wrapper/gradle-wrapper.jar
-
-# IDE
-.idea/
-.vscode/
-*.iml
+# Node / TypeScript build output
+node_modules/
 out/
+*.vsix
+.vscode-test/
 
-# macOS
+# OS / IDE noise
 .DS_Store
 
 # Claude Code local settings
@@ -23,6 +15,6 @@ out/
 .env.*
 !.env.example
 
-# Python
+# Python (used by bundled scripts during development)
 __pycache__/
 *.pyc

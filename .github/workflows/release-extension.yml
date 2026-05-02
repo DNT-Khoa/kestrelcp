@@ -1,0 +1,40 @@
+name: Release VS Code Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile
+        run: npm run compile
+
+      - name: Package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npx --yes @vscode/vsce package --no-yarn --no-git-tag-version "$VERSION" -o "sheikah-${VERSION}.vsix"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "sheikah-${VERSION}.vsix" \
+            --title "Sheikah ${VERSION}" \
+            --notes "Install: \`code --install-extension sheikah-${VERSION}.vsix\`"

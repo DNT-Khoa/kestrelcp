@@ -1,0 +1,80 @@
+{
+  "name": "sheikah",
+  "displayName": "Sheikah",
+  "description": "Scaffold, test, and commit competitive programming solutions for Kattis, Codeforces, and LeetCode.",
+  "version": "0.1.0",
+  "publisher": "khoa",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DNT-Khoa/competitive-programming"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "sheikah.init",                "title": "Sheikah: Initialize Workspace" },
+      { "command": "sheikah.newProblem",          "title": "Sheikah: New Problem",                 "icon": "$(add)" },
+      { "command": "sheikah.runTests",            "title": "Sheikah: Run Tests",                   "icon": "$(play)" },
+      { "command": "sheikah.runTestsForCurrent",  "title": "Sheikah: Run Tests for Current File" },
+      { "command": "sheikah.aiCommit",            "title": "Sheikah: AI Commit" },
+      { "command": "sheikah.refreshProblems",     "title": "Sheikah: Refresh Problems",            "icon": "$(refresh)" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "sheikah", "title": "Sheikah", "icon": "$(eye)" }
+      ]
+    },
+    "views": {
+      "sheikah": [
+        { "id": "sheikah.problems", "name": "Problems" }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        { "command": "sheikah.newProblem",      "when": "view == sheikah.problems", "group": "navigation@1" },
+        { "command": "sheikah.refreshProblems", "when": "view == sheikah.problems", "group": "navigation@2" }
+      ],
+      "view/item/context": [
+        { "command": "sheikah.runTests", "when": "view == sheikah.problems && viewItem == problem", "group": "inline" }
+      ]
+    },
+    "configuration": {
+      "title": "Sheikah",
+      "properties": {
+        "sheikah.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Python 3 interpreter used to run new.py / test.py / commit.py."
+        },
+        "sheikah.platforms": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["kattis", "codeforces", "leetcode"],
+          "description": "Platforms surfaced in the sidebar."
+        },
+        "sheikah.anthropicApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API key for AI commit messages. Leave blank to inherit from the shell environment."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.0",
+    "typescript": "^5.4.0"
+  }
+}

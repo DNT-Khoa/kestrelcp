@@ -22,17 +22,20 @@ import sys
 import tempfile
 import time
 
-CANARIES: list[tuple[str, str]] = [
-    ("kattis", "https://open.kattis.com/problems/oddecho"),
-    ("codeforces", "https://codeforces.com/problemset/problem/4/A"),
-    ("leetcode", "two-sum"),
+# (platform, target, min_input_lines) — min_input_lines guards against the
+# silent-collapse failure mode where scraping returns non-empty but joined-on-
+# one-line content (e.g. Codeforces using <br> between sample input rows).
+CANARIES: list[tuple[str, str, int]] = [
+    ("kattis", "https://open.kattis.com/problems/oddecho", 1),
+    ("codeforces", "https://codeforces.com/problemset/problem/645/A", 4),
+    ("leetcode", "two-sum", 2),
 ]
 
 MAX_ATTEMPTS = 3
 RETRY_SLEEP_SECONDS = 10
 
 
-def run_canary(workspace: str, platform: str, target: str) -> list[str]:
+def run_canary(workspace: str, platform: str, target: str, min_input_lines: int) -> list[str]:
     """Returns list of failure messages (empty list = pass)."""
     last_stderr = ""
     for attempt in range(1, MAX_ATTEMPTS + 1):
@@ -82,6 +85,17 @@ def run_canary(workspace: str, platform: str, target: str) -> list[str]:
                 f"(target site changed its HTML / API)"
             )
 
+    in_path = os.path.join(problem_path, "1.in")
+    if os.path.exists(in_path) and os.path.getsize(in_path) > 0:
+        with open(in_path) as fh:
+            line_count = sum(1 for line in fh if line.strip())
+        if line_count < min_input_lines:
+            failures.append(
+                f"{platform}: 1.in has {line_count} non-empty line(s), expected >= "
+                f"{min_input_lines} — multi-line input may have collapsed onto a single line "
+                f"(e.g. <br> tags ignored by parser)"
+            )
+
     return failures
 
 
@@ -97,9 +111,9 @@ def main() -> int:
     os.chmod(os.path.join(workspace, "new.py"), 0o755)
 
     all_failures: list[str] = []
-    for platform, target in CANARIES:
+    for platform, target, min_input_lines in CANARIES:
         print(f"\n=== Canary: {platform} ({target}) ===", flush=True)
-        fails = run_canary(workspace, platform, target)
+        fails = run_canary(workspace, platform, target, min_input_lines)
         if fails:
             for f in fails:
                 print(f"  FAIL  {f}", flush=True)

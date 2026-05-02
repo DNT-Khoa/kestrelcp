@@ -4,6 +4,7 @@
 .idea/**
 src/**
 tests/**
+DEVELOPMENT.md
 node_modules/**
 tsconfig.json
 .gitignore

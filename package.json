@@ -3,11 +3,14 @@
   "displayName": "Sheikah",
   "description": "Scaffold, test, and commit competitive programming solutions for Kattis, Codeforces, and LeetCode.",
   "version": "0.1.0",
-  "publisher": "khoa",
+  "publisher": "khoa-doan",
+  "author": {
+    "name": "Khoa Doan"
+  },
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/DNT-Khoa/competitive-programming"
+    "url": "https://github.com/DNT-Khoa/sheikah.git"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -23,6 +26,7 @@
       { "command": "sheikah.newProblem",          "title": "Sheikah: New Problem",                 "icon": "$(add)" },
       { "command": "sheikah.runTests",            "title": "Sheikah: Run Tests",                   "icon": "$(play)" },
       { "command": "sheikah.runTestsForCurrent",  "title": "Sheikah: Run Tests for Current File" },
+      { "command": "sheikah.refetchAllTests",     "title": "Sheikah: Refetch All Sample Tests",    "icon": "$(cloud-download)" },
       { "command": "sheikah.aiCommit",            "title": "Sheikah: AI Commit" },
       { "command": "sheikah.runPlayground",       "title": "Sheikah: Run Playground",              "icon": "$(play-circle)" },
       { "command": "sheikah.refreshProblems",     "title": "Sheikah: Refresh Problems",            "icon": "$(refresh)" }
@@ -38,6 +42,9 @@
       ]
     },
     "menus": {
+      "commandPalette": [
+        { "command": "sheikah.runTests", "when": "false" }
+      ],
       "view/title": [
         { "command": "sheikah.newProblem",      "when": "view == sheikah.problems", "group": "navigation@1" },
         { "command": "sheikah.refreshProblems", "when": "view == sheikah.problems", "group": "navigation@2" }

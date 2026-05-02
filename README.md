@@ -55,7 +55,7 @@ Or in VS Code: **Extensions** panel → **⋯** menu → **Install from VSIX…*
 ## 🎯 Daily workflow
 
 1. **Open VS Code on a folder** — either an existing CP folder or a brand-new one.
-2. **First time only**: run **Sheikah: Initialize Workspace** from the command palette. Copies `new.py` / `test.py` / `commit.py` into the folder and creates `kattis/`, `codeforces/`, `leetcode/`, and `playground/Playground.java`. (You'll be auto-prompted on the first command if the workspace is uninitialized.)
+2. **First time only**: run **Sheikah: Initialize Workspace** from the command palette — the extension drops `new.py` / `test.py` / `commit.py` into the folder for you and creates `kattis/`, `codeforces/`, `leetcode/`, and `playground/Playground.java`. (You'll be auto-prompted on the first command if the workspace is uninitialized, so you can usually skip this step.)
 3. **Click the rocket icon** in the activity bar → the **Problems** sidebar lists every problem grouped by platform.
 4. **Scaffold a new problem**:
    - `+` button at the top of the Problems sidebar, or
@@ -64,15 +64,28 @@ Or in VS Code: **Extensions** panel → **⋯** menu → **Install from VSIX…*
    Pick platform, paste URL or slug, hit Enter. The terminal shows `./new.py` running; sample tests are auto-fetched.
 5. **Open the solution** by clicking the problem in the sidebar — it opens `Solution.java` directly.
 6. **Solve it.**
-7. **Run tests** — three ways:
+7. **Run tests** — two ways:
    - Hover the problem in the sidebar → click the inline ▶ button
    - Command palette → **Sheikah: Run Tests for Current File**
-   - Command palette → **Sheikah: Run Tests** (quick-pick platform + problem)
 8. **Commit** — stage your files in the Source Control panel, then command palette → **Sheikah: AI Commit**. Claude proposes a Conventional Commit message; type `y` / `n` / `e` to accept / abort / edit.
 
 ### 🧪 Playground
 
 Need to try a snippet without scaffolding a whole problem? **Sheikah: Initialize Workspace** also creates `playground/Playground.java` — a free-form Java scratchpad. Open it from the **Playground** entry at the top of the sidebar (beaker icon) and hit the inline ▶ button to compile + run. Add helper classes alongside it (`Helper.java`, etc.) — `javac *.java` picks them up automatically; `java Playground` is the entry point.
+
+### 🔄 Repairing existing problems
+
+When a scraper is fixed in a new release, or a site (Kattis / Codeforces / LeetCode) changes its HTML/API, your pre-existing `*.in` / `*.out` files won't auto-update — they're already on disk. To re-pull them across every problem in your workspace:
+
+- **Cmd+Shift+P** → **Sheikah: Refetch All Sample Tests**
+
+A confirmation modal shows the per-platform problem counts (e.g. *kattis: 2, codeforces: 5, leetcode: 1*). On confirm, every problem is re-scraped using the URL stored in its `notes.md`. Only `*.in` and `*.out` are overwritten — `Solution.java` and `notes.md` are untouched.
+
+From the CLI (single problem at a time):
+
+```bash
+./new.py --refetch <platform> <problem>
+```
 
 ---
 
@@ -82,8 +95,8 @@ Need to try a snippet without scaffolding a whole problem? **Sheikah: Initialize
 |---|---|
 | `Sheikah: Initialize Workspace` | Copies the three scripts + creates platform dirs and `playground/` |
 | `Sheikah: New Problem` | Prompts for platform + URL/slug, runs `./new.py` |
-| `Sheikah: Run Tests` | Picks a problem and runs `./test.py` |
 | `Sheikah: Run Tests for Current File` | Runs tests for the problem containing the active file |
+| `Sheikah: Refetch All Sample Tests` | Re-runs the scrapers for every existing problem on every platform; overwrites `*.in`/`*.out` and leaves `Solution.java` / `notes.md` alone. Useful after a scraper fix or upstream site change. |
 | `Sheikah: Run Playground` | Compiles `playground/*.java` and runs `Playground` |
 | `Sheikah: AI Commit` | Runs `./commit.py` (requires `ANTHROPIC_API_KEY`) |
 | `Sheikah: Refresh Problems` | Manually refreshes the sidebar |
@@ -100,127 +113,12 @@ Need to try a snippet without scaffolding a whole problem? **Sheikah: Initialize
 
 ---
 
-## 📁 Repo layout
-
-```
-sheikah/
-├── package.json              ← extension manifest
-├── tsconfig.json
-├── src/
-│   ├── extension.ts          ← commands + activation
-│   ├── tree.ts               ← sidebar tree view
-│   └── runner.ts             ← terminal helper
-├── scripts/                  ← bundled new.py / test.py / commit.py
-├── .vscode/{launch,tasks}.json   ← F5 to debug
-└── .github/workflows/release-extension.yml   ← tag v* → builds .vsix → makes release
-```
-
-The `scripts/` directory is the canonical source of truth for the Python scripts. Edits there flow into the next packaged release.
-
----
-
-## 🛠️ Develop
-
-```bash
-npm install
-npm run compile
-# F5 in VS Code → launches a dev instance with the extension loaded
-```
-
-In the dev instance: open any folder → **Sheikah: Initialize Workspace** → scaffolds scripts and platform dirs → ready to test.
-
-### Manual test plan
-
-Use this checklist after any code change to verify everything still works end-to-end.
-
-1. **Launch the dev instance**
-   - In the sheikah repo window, press **F5** (or **Run** → *Start Debugging*).
-   - A new VS Code window titled **[Extension Development Host]** opens with the extension active.
-
-2. **Open a test workspace**
-   - **File → Open Folder…** → pick a fresh empty folder (e.g. `~/tmp/sheikah-test`). Don't reuse the sheikah repo itself — it'll get cluttered with `kattis/`, `codeforces/`, etc.
-
-3. **Initialize and check the sidebar**
-   - **Cmd+Shift+P** → **Sheikah: Initialize Workspace**.
-   - Click the 🚀 rocket in the activity bar. The Problems sidebar should show:
-     ```
-     🧪 Playground       ← inline ▶ on hover
-     📁 kattis
-     📁 codeforces
-     📁 leetcode
-     ```
-
-4. **Test the playground**
-
-   | Action | Expected |
-   |---|---|
-   | Click the **Playground** label | `playground/Playground.java` opens with the `main` template |
-   | Hover the row → click ▶ | A `Sheikah` terminal runs `( cd playground && javac *.java && java Playground )` and prints `Hello from Sheikah playground.` |
-   | Edit `Playground.java`, save, click ▶ again | Recompiles and prints the new output |
-   | Add a `playground/Helper.java` class, call it from `Playground.main`, click ▶ | Both compile; `java Playground` uses `Helper` |
-   | Cmd+Shift+P → **Sheikah: Run Playground** | Same as the ▶ button |
-
-5. **Test problem flows** (regression check)
-   - **Sheikah: New Problem** → pick a platform, paste a URL or slug → folder + sample tests scaffolded.
-   - Click a problem in the sidebar → `Solution.java` opens.
-   - Hover the problem → click ▶ → tests run.
-   - **Sheikah: Run Tests for Current File** with `Solution.java` open → tests run.
-
-6. **Test AI commit** (requires `ANTHROPIC_API_KEY`)
-   - Stage some changes in Source Control.
-   - **Sheikah: AI Commit** → terminal proposes a Conventional Commit message; respond with `y` / `n` / `e`.
-
-### Iterating
-
-Run `npm run watch` in a terminal so `out/` stays fresh. After each edit in `src/`, hit **Cmd+R** ("Reload Window") in the dev instance — no need to kill and restart F5.
-
-### Quick sanity check (no F5 needed)
-
-```bash
-npm run compile
-```
-
-If `tsc` is clean and F5 still fails, it's a launch-config problem, not a code problem.
-
-### 🐦 Scraper canary (CI)
-
-The bundled scrapers (`new.py`) depend on Kattis / Codeforces / LeetCode HTML and GraphQL — these change without notice. The **Scraper Canary** workflow ([`.github/workflows/scraper-canary.yml`](.github/workflows/scraper-canary.yml)) runs weekly (Monday 06:00 UTC) and on-demand to catch breakage early.
-
-It runs [`tests/canary.py`](tests/canary.py), which fetches one stable problem per platform and asserts non-empty `1.in` / `1.out` files. On failure, it opens or comments on a GitHub issue tagged `scraper-broken` with the failing platform and a link to the run logs. Three retries per platform absorb transient flakes.
-
-Run it locally before pushing scraper changes:
-
-```bash
-pip install requests beautifulsoup4
-python3 tests/canary.py
-```
-
----
-
-## 📦 Release
-
-Tag the repo with `vX.Y.Z` and push:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-The **Release VS Code Extension** workflow builds `sheikah-X.Y.Z.vsix` and attaches it to a GitHub release. Keep the repo private to limit access; install with:
-
-```bash
-code --install-extension sheikah-X.Y.Z.vsix
-```
-
-> **Distribution model**: VS Code Marketplace is all-or-nothing public, so private extensions live on GitHub Releases. Auto-updates aren't supported for sideloaded extensions — re-install for new versions, or graduate to a self-hosted private marketplace ([`coder/code-marketplace`](https://github.com/coder/code-marketplace)) if that becomes painful.
-
----
-
 ## 🧪 The bundled scripts (used by both the extension and the CLI)
 
 | Script | What it does |
 |---|---|
 | `./new.py <platform> <url-or-slug>` | Scaffold a new problem folder + fetch sample tests |
+| `./new.py --refetch <platform> <problem>` | Re-fetch sample tests for an existing problem (overwrites `*.in`/`*.out` only) |
 | `./test.py <platform> <problem>` | Compile/run solution and check against all test cases |
 | `./commit.py` | Generate a conventional commit message from staged changes via the Claude API |
 
@@ -242,6 +140,12 @@ code --install-extension sheikah-X.Y.Z.vsix
 | 💄 | `style` | Formatting only |
 
 Confirm with `y` (accept), `n` (abort), or `e` (edit before committing).
+
+---
+
+## 🛠️ Contributing / development
+
+Working on the extension itself? Head to the [GitHub repo](https://github.com/DNT-Khoa/sheikah) for the dev loop, manual test plan, scraper canary, and release process.
 
 ---
 

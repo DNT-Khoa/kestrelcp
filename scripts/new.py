@@ -180,8 +180,8 @@ def fetch_codeforces(url: str) -> tuple[list[tuple[str, str]], str]:
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
 
-    inputs = [pre.get_text() for pre in soup.select("div.input pre")]
-    outputs = [pre.get_text() for pre in soup.select("div.output pre")]
+    inputs = [pre.get_text(separator="\n") for pre in soup.select("div.input pre")]
+    outputs = [pre.get_text(separator="\n") for pre in soup.select("div.output pre")]
     samples = list(zip(inputs, outputs))
 
     stmt = soup.select_one("div.problem-statement")
@@ -286,6 +286,60 @@ def _touch_empty_tests(problem_dir: str) -> None:
     print("Created empty 1.in / 1.out — paste sample tests manually")
 
 
+def _read_url_from_notes(problem_dir: str) -> str | None:
+    notes_path = os.path.join(problem_dir, "notes.md")
+    if not os.path.exists(notes_path):
+        return None
+    with open(notes_path) as fh:
+        for line in fh:
+            m = re.match(r"\[Problem\]\((https?://[^)]+)\)", line.strip())
+            if m:
+                return m.group(1)
+    return None
+
+
+def refetch_samples(platform: str, problem: str, url: str | None = None) -> None:
+    """Re-fetch sample tests for an existing problem.
+
+    Overwrites *.in / *.out files, leaves Solution.java and notes.md untouched.
+    Use this to repair problems whose samples were saved by an older buggy
+    scraper, without losing in-progress solution code.
+    """
+    problem_dir = os.path.join(SCRIPT_DIR, platform, problem)
+    if not os.path.isdir(problem_dir):
+        print(f"Not found: {problem_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    if url is None:
+        url = _read_url_from_notes(problem_dir)
+        if not url:
+            print(
+                f"Could not find a [Problem](url) line in {problem_dir}/notes.md. "
+                f"Pass the URL explicitly: ./new.py --refetch {platform} {problem} <url>",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    samples, _ = fetch_page(platform, url)
+    if not samples:
+        print(f"No samples fetched from {url} — aborting (existing files left alone)", file=sys.stderr)
+        sys.exit(1)
+
+    for f in os.listdir(problem_dir):
+        if f.endswith(".in") or f.endswith(".out"):
+            os.remove(os.path.join(problem_dir, f))
+
+    for i, (inp, out) in enumerate(samples, start=1):
+        in_path = os.path.join(problem_dir, f"{i}.in")
+        out_path = os.path.join(problem_dir, f"{i}.out")
+        with open(in_path, "w") as fh:
+            fh.write(inp if inp.endswith("\n") else inp + "\n")
+        with open(out_path, "w") as fh:
+            fh.write(out if out.endswith("\n") else out + "\n")
+
+    print(f"Refetched {len(samples)} sample test(s) from {url}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="new.py",
@@ -295,11 +349,22 @@ def main() -> None:
     parser.add_argument("platform", choices=["kattis", "codeforces", "leetcode"])
     parser.add_argument("problem_or_url", help="problem name/slug OR a full problem URL")
     parser.add_argument("url", nargs="?", help="problem page URL (omit if first arg is a URL)")
+    parser.add_argument(
+        "--refetch",
+        action="store_true",
+        help="re-fetch sample tests for an existing problem (overwrites *.in/*.out only)",
+    )
 
     if argcomplete:
         argcomplete.autocomplete(parser)
 
     args = parser.parse_args()
+
+    if args.refetch:
+        if args.problem_or_url.startswith(("http://", "https://")):
+            parser.error("--refetch expects a problem name as the second arg, not a URL")
+        refetch_samples(args.platform, args.problem_or_url, args.url)
+        return
 
     if args.problem_or_url.startswith(("http://", "https://")):
         if args.url is not None:

@@ -18,6 +18,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('sheikah.runTestsForCurrent', () => runTestsForCurrent()),
     vscode.commands.registerCommand('sheikah.aiCommit',           () => aiCommit()),
     vscode.commands.registerCommand('sheikah.runPlayground',      () => runPlayground()),
+    vscode.commands.registerCommand('sheikah.refetchAllTests',    () => refetchAllTests()),
     vscode.commands.registerCommand('sheikah.refreshProblems',    () => provider.refresh()),
   );
 
@@ -130,32 +131,59 @@ async function newProblem(provider: ProblemsTreeProvider) {
 }
 
 async function runTests(item?: Item) {
+  if (item?.contextValue !== 'problem') return;
+  const root = workspaceRoot();
+  if (!root) return;
+  if (!(await ensureInitialized(root))) return;
+  await runInTerminal(`./test.py ${item.platform} ${item.problem}`);
+}
+
+async function refetchAllTests() {
   const root = workspaceRoot();
   if (!root) return;
   if (!(await ensureInitialized(root))) return;
 
-  let platform: string | undefined;
-  let problem: string | undefined;
-
-  if (item?.contextValue === 'problem') {
-    platform = item.platform;
-    problem = item.problem;
-  } else {
-    platform = await vscode.window.showQuickPick(platforms(), { placeHolder: 'Platform' });
-    if (!platform) return;
-    const platformDir = path.join(root, platform);
-    if (!fs.existsSync(platformDir)) {
-      vscode.window.showErrorMessage(`No "${platform}" folder in workspace.`);
-      return;
+  const counts: Record<string, number> = {};
+  let total = 0;
+  for (const p of platforms()) {
+    const dir = path.join(root, p);
+    if (!fs.existsSync(dir)) continue;
+    const probs = fs.readdirSync(dir)
+      .filter(d => {
+        try { return fs.statSync(path.join(dir, d)).isDirectory(); }
+        catch { return false; }
+      });
+    if (probs.length > 0) {
+      counts[p] = probs.length;
+      total += probs.length;
     }
-    const choices = fs.readdirSync(platformDir)
-      .filter(d => fs.statSync(path.join(platformDir, d)).isDirectory())
-      .sort();
-    problem = await vscode.window.showQuickPick(choices, { placeHolder: 'Problem' });
-    if (!problem) return;
   }
 
-  await runInTerminal(`./test.py ${platform} ${problem}`);
+  if (total === 0) {
+    vscode.window.showInformationMessage('Sheikah: no problems to refetch.');
+    return;
+  }
+
+  const summary = Object.entries(counts).map(([p, n]) => `${p}: ${n}`).join(', ');
+  const choice = await vscode.window.showWarningMessage(
+    `Re-fetch sample tests for ${total} problem(s) (${summary})? `
+      + `This hits each platform once per problem and overwrites *.in / *.out files. `
+      + `Solution.java and notes.md are preserved.`,
+    { modal: true },
+    'Refetch all',
+  );
+  if (choice !== 'Refetch all') return;
+
+  const platformList = Object.keys(counts).map(p => `'${p}'`).join(' ');
+  const cmd = [
+    `for p in ${platformList}; do`,
+    `for d in "$p"/*/; do`,
+    `[ -d "$d" ] || continue;`,
+    `./new.py --refetch "$p" "$(basename "$d")" || echo "  (failed: $p/$(basename "$d"))";`,
+    `done; done; echo; echo "Sheikah: refetch complete."`,
+  ].join(' ');
+
+  await runInTerminal(cmd);
 }
 
 async function runTestsForCurrent() {

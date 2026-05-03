@@ -2,7 +2,7 @@
   "name": "sheikah",
   "displayName": "Sheikah",
   "description": "Scaffold, test, and commit competitive programming solutions for Kattis, Codeforces, and LeetCode.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "khoa-doan",
   "author": {
     "name": "Khoa Doan"

@@ -140,6 +140,18 @@ Releases are driven by two chained workflows — no local tagging required.
    - Bumps `version` in `package.json`, commits as `chore: release vX.Y.Z`, creates tag `vX.Y.Z`, pushes both.
 3. The pushed tag triggers **Release VS Code Extension**, which builds `sheikah-X.Y.Z.vsix` and attaches it to a new GitHub release.
 
+### One-time PAT setup (required for chained triggering)
+
+GitHub deliberately does **not** fire downstream workflows when an action uses the default `GITHUB_TOKEN` to push. Without a PAT, the bump workflow creates the tag but `release-extension.yml` never runs. Setup:
+
+1. https://github.com/settings/personal-access-tokens → **Generate new token (fine-grained)**.
+2. **Repository access** → only `DNT-Khoa/sheikah`.
+3. **Permissions** → **Contents: Read and write**. Nothing else needed.
+4. Set an expiration that fits your renewal cadence (e.g. 1 year).
+5. Copy the token, then in the repo: **Settings → Secrets and variables → Actions → New repository secret**, name `RELEASE_PAT`, paste the value.
+
+The bump workflow ([`.github/workflows/bump-version.yml`](.github/workflows/bump-version.yml)) checks out and pushes using `${{ secrets.RELEASE_PAT }}`, so the tag push counts as a "human" event and triggers the release workflow.
+
 Pull `main` afterward to get the bump commit locally.
 
 ```bash

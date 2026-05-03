@@ -43,7 +43,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           FAILURES: ${{ steps.canary.outputs.failures }}
         run: |
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          RUN_URL="${REPO_URL}/actions/runs/${{ github.run_id }}"
+          PARSER_URL="${REPO_URL}/blob/main/scripts/new.py"
           BODY=$(cat <<EOF
           The scraper canary failed on $(date -u +%Y-%m-%dT%H:%M:%SZ).
 
@@ -62,7 +64,7 @@ jobs:
 
           ### Next steps
           1. Re-run this workflow manually (Actions → Scraper Canary → Run workflow).
-          2. If it fails again, inspect the failing platform's parser in [scripts/new.py](../blob/main/scripts/new.py).
+          2. If it fails again, inspect the failing platform's parser at ${PARSER_URL}.
           3. Close this issue once a fix is merged.
           EOF
           )

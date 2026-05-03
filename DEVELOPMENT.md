@@ -23,10 +23,13 @@ sheikah/
 │   ├── icon.svg              ← Sheikah emblem source
 │   └── icon.png              ← 256×256 marketplace logo
 ├── .vscode/{launch,tasks}.json   ← F5 to debug
-└── .github/workflows/
-    ├── bump-version.yml      ← manual: bumps package.json + pushes vX.Y.Z tag
-    ├── release-extension.yml ← tag v* → builds .vsix → makes release
-    └── scraper-canary.yml    ← weekly check that Kattis/CF/LC scrapers still work
+└── .github/
+    ├── workflows/
+    │   ├── bump-version.yml      ← manual: bumps package.json + pushes vX.Y.Z tag
+    │   ├── release-extension.yml ← tag v* → builds .vsix → makes release
+    │   └── scraper-canary.yml    ← weekly check that Kattis/CF/LC scrapers still work
+    └── scripts/
+        └── release_notes.py      ← AI-curated release notes (called by release workflow)
 ```
 
 The `scripts/` directory is the canonical source of truth for the Python scripts. Edits there flow into the next packaged release.
@@ -153,5 +156,26 @@ git push --follow-tags
 ```
 
 The tag push still triggers the release workflow.
+
+### AI-curated release notes
+
+The release workflow calls [`.github/scripts/release_notes.py`](.github/scripts/release_notes.py), which sends the commit log + file-stat diff for the new version's range to Claude and asks for structured markdown release notes (grouped into ✨ Features / 🐛 Fixes / 📝 Documentation / 🔧 CI / Tooling sections).
+
+**Setup** — add the API key as a repo secret (one-time):
+
+1. **Settings → Secrets and variables → Actions → New repository secret**.
+2. Name: `ANTHROPIC_API_KEY`. Value: your `sk-ant-…` key.
+
+**Fallback behavior** — if the secret is missing, the API call fails, or the network blips, the workflow falls back to a plain commit list (the previous behavior) and the release still ships. The fallback reason is logged in the workflow output.
+
+**Local preview** — run the script directly to see what Claude will produce for a given range:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-…
+pip install anthropic
+python3 .github/scripts/release_notes.py v0.2.0 0.3.0
+```
+
+The first arg is the previous tag (or empty string for the initial release); the second is the version being released (no leading `v`).
 
 > **Distribution model**: Sheikah currently ships as a `.vsix` on GitHub Releases. Sideloaded extensions don't auto-update — users re-install for new versions. Publishing to the [VS Code Marketplace](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) is the natural next step once usage justifies it; that gives users in-editor auto-updates and discovery.

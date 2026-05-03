@@ -21,8 +21,15 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Node dependencies
         run: npm ci
+
+      - name: Install Python dependencies (for release notes generator)
+        run: pip install anthropic
 
       - name: Compile
         run: npm run compile
@@ -35,6 +42,7 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
 
@@ -46,9 +54,31 @@ jobs:
             RANGE="$PREV_TAG..HEAD"
           fi
 
-          CHANGELOG=$(git log $RANGE --pretty=format:"- %s" --no-merges)
+          INSTALL_BLOCK=$(cat <<EOF
+          ## Install
+          \`\`\`bash
+          code --install-extension sheikah-${VERSION}.vsix
+          \`\`\`
+          EOF
+          )
 
-          NOTES="## Install\n\`\`\`bash\ncode --install-extension sheikah-${VERSION}.vsix\n\`\`\`\n\n## Changes\n${CHANGELOG}"
+          # Try AI-curated notes; fall back to a plain commit list on any failure
+          # (missing secret, API outage, network blip, etc.) so a release never breaks.
+          if AI_NOTES=$(python3 .github/scripts/release_notes.py "$PREV_TAG" "$VERSION" 2>release_notes.err); then
+            echo "Using AI-generated release notes."
+            NOTES=$(printf '%s\n\n%s\n' "$INSTALL_BLOCK" "$AI_NOTES")
+          else
+            echo "AI release notes unavailable, falling back to commit list. Reason:"
+            cat release_notes.err
+            CHANGELOG=$(git log $RANGE --pretty=format:"- %s" --no-merges)
+            NOTES=$(cat <<EOF
+          ${INSTALL_BLOCK}
+
+          ## Changes
+          ${CHANGELOG}
+          EOF
+          )
+          fi
 
           gh release create "$GITHUB_REF_NAME" \
             "sheikah-${VERSION}.vsix" \

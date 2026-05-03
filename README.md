@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="media/icon.png" alt="Sheikah" width="128" height="128" />
-</p>
-
 <h1 align="center">Sheikah</h1>
 
 <p align="center">

@@ -20,8 +20,6 @@
 - **Browse** every solved problem in a sidebar grouped by platform.
 - **Playground** — a dedicated `playground/Playground.java` for ad-hoc Java experimentation. One click compiles and runs it.
 
-Sheikah is a thin GUI on top of three Python scripts (`new.py`, `test.py`, `commit.py`) that get copied into your workspace on first use. You can keep using them from the CLI too — the extension and the scripts stay in lockstep.
-
 ---
 
 ## 🚀 Install
@@ -51,13 +49,13 @@ Or in VS Code: **Extensions** panel → **⋯** menu → **Install from VSIX…*
 ## 🎯 Daily workflow
 
 1. **Open VS Code on a folder** — either an existing CP folder or a brand-new one.
-2. **First time only**: run **Sheikah: Initialize Workspace** from the command palette — the extension drops `new.py` / `test.py` / `commit.py` into the folder for you and creates `kattis/`, `codeforces/`, `leetcode/`, and `playground/Playground.java`. (You'll be auto-prompted on the first command if the workspace is uninitialized, so you can usually skip this step.)
+2. **First time only** (optional): run **Sheikah: Initialize Workspace** from the command palette to create the `kattis/`, `codeforces/`, `leetcode/`, and `playground/Playground.java` scaffolding upfront. You can skip this — the directories are also created on demand the first time you scaffold a problem.
 3. **Click the rocket icon** in the activity bar → the **Problems** sidebar lists every problem grouped by platform.
 4. **Scaffold a new problem**:
    - `+` button at the top of the Problems sidebar, or
    - command palette → **Sheikah: New Problem**
 
-   Pick platform, paste URL or slug, hit Enter. The terminal shows `./new.py` running; sample tests are auto-fetched.
+   Pick platform, paste URL or slug, hit Enter. A `Sheikah` terminal shows the scraper running; sample tests are auto-fetched into `<platform>/<problem>/`.
 5. **Open the solution** by clicking the problem in the sidebar — it opens `Solution.java` directly.
 6. **Solve it.**
 7. **Run tests** — two ways:
@@ -77,24 +75,18 @@ When a scraper is fixed in a new release, or a site (Kattis / Codeforces / LeetC
 
 A confirmation modal shows the per-platform problem counts (e.g. *kattis: 2, codeforces: 5, leetcode: 1*). On confirm, every problem is re-scraped using the URL stored in its `notes.md`. Only `*.in` and `*.out` are overwritten — `Solution.java` and `notes.md` are untouched.
 
-From the CLI (single problem at a time):
-
-```bash
-./new.py --refetch <platform> <problem>
-```
-
 ---
 
 ## 📋 Commands
 
 | Command | What it does |
 |---|---|
-| `Sheikah: Initialize Workspace` | Copies the three scripts + creates platform dirs and `playground/` |
-| `Sheikah: New Problem` | Prompts for platform + URL/slug, runs `./new.py` |
-| `Sheikah: Run Tests for Current File` | Runs tests for the problem containing the active file |
-| `Sheikah: Refetch All Sample Tests` | Re-runs the scrapers for every existing problem on every platform; overwrites `*.in`/`*.out` and leaves `Solution.java` / `notes.md` alone. Useful after a scraper fix or upstream site change. |
+| `Sheikah: Initialize Workspace` | Creates platform directories and `playground/Playground.java`. Optional — directories are also created on demand. |
+| `Sheikah: New Problem` | Prompts for platform + URL/slug, scaffolds the problem folder, fetches sample tests |
+| `Sheikah: Run Tests for Current File` | Compiles `Solution.java` and checks it against every `*.in` / `*.out` for the problem containing the active file |
+| `Sheikah: Refetch All Sample Tests` | Re-runs the scrapers for every existing problem on every platform; overwrites `*.in` / `*.out` and leaves `Solution.java` / `notes.md` alone. Useful after a scraper fix or upstream site change. |
 | `Sheikah: Run Playground` | Compiles `playground/*.java` and runs `Playground` |
-| `Sheikah: AI Commit` | Runs `./commit.py` (requires `ANTHROPIC_API_KEY`) |
+| `Sheikah: AI Commit` | Generates a Conventional Commit message from staged changes via Claude (requires `ANTHROPIC_API_KEY`) |
 | `Sheikah: Refresh Problems` | Manually refreshes the sidebar |
 
 ---
@@ -103,26 +95,17 @@ From the CLI (single problem at a time):
 
 | Setting | Default | Purpose |
 |---|---|---|
-| `sheikah.pythonPath` | `python3` | Python 3 interpreter used for the bundled scripts |
+| `sheikah.pythonPath` | `python3` | Python 3 interpreter used to invoke the bundled scrapers (≥ 3.10 required) |
 | `sheikah.platforms` | `["kattis", "codeforces", "leetcode"]` | Platforms surfaced in the sidebar |
 | `sheikah.anthropicApiKey` | `""` | Anthropic key (blank = inherit from shell env) |
 
 ---
 
-## 🧪 The bundled scripts (used by both the extension and the CLI)
+## 🔍 How it works
 
-| Script | What it does |
-|---|---|
-| `./new.py <platform> <url-or-slug>` | Scaffold a new problem folder + fetch sample tests |
-| `./new.py --refetch <platform> <problem>` | Re-fetch sample tests for an existing problem (overwrites `*.in`/`*.out` only) |
-| `./test.py <platform> <problem>` | Compile/run solution and check against all test cases |
-| `./commit.py` | Generate a conventional commit message from staged changes via the Claude API |
-
-`new.py` auto-fetches test cases for **Kattis**, **Codeforces**, and **LeetCode** (via its public GraphQL endpoint). For LeetCode, each `.in` file contains one value per parameter on its own line — your `Solution.main` reads each arg with `sc.nextLine()` and parses it before printing the result in LeetCode's expected format. Premium-only and design-style problems (LRU Cache, etc.) won't fit the stdin/stdout model.
-
-`test.py` compiles with `javac` and runs `java Solution` against every `*.in`/`*.out` pair, ignoring trailing whitespace and blank lines. 5-second timeout per case.
-
-`commit.py` reads `git diff --staged`, asks Claude for a one-line Conventional Commit message with an emoji prefix:
+- **Scaffolding** (Kattis / Codeforces) parses HTML with `requests` + `BeautifulSoup` and writes one `*.in` / `*.out` pair per sample. **LeetCode** uses the public GraphQL endpoint; each `.in` file holds one parameter per line, so `Solution.main` reads arguments with `sc.nextLine()`. Premium-only and design-style problems (LRU Cache, etc.) don't fit the stdin/stdout model.
+- **Testing** runs `javac Solution.java`, then `java Solution` once per `*.in` with stdin redirected. Output is compared to the matching `*.out` ignoring trailing whitespace and blank lines. 5-second timeout per case.
+- **AI Commit** runs `git diff --staged`, asks Claude for a one-line Conventional Commit message with an emoji prefix:
 
 | Emoji | Type | When to use |
 |---|---|---|

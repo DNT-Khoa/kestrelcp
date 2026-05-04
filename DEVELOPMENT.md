@@ -32,7 +32,7 @@ sheikah/
         └── release_notes.py      ← AI-curated release notes (called by release workflow)
 ```
 
-The `scripts/` directory is the canonical source of truth for the Python scripts. Edits there flow into the next packaged release.
+The `scripts/` directory ships in the `.vsix` and the extension invokes those scripts directly from the install location (`~/.vscode/extensions/khoa-doan.sheikah-X.Y.Z/scripts/`) — they are **not** copied into user workspaces. That means script fixes flow to users automatically as soon as they upgrade the extension; no per-workspace re-init needed.
 
 ---
 
@@ -44,7 +44,7 @@ npm run compile
 # F5 in VS Code → launches a dev instance with the extension loaded
 ```
 
-In the dev instance: open any folder → **Sheikah: Initialize Workspace** → scaffolds scripts and platform dirs → ready to test.
+In the dev instance: open any folder → **Sheikah: Initialize Workspace** → creates `kattis/` / `codeforces/` / `leetcode/` / `playground/Playground.java` → ready to test. (The Python scripts run from the extension's install dir, not from the workspace, so there's nothing to copy.)
 
 ### Manual test plan
 

@@ -18,7 +18,7 @@ except ImportError:
     argcomplete = None
 
 TIMEOUT = 5
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE = os.getcwd()
 PLATFORMS = ["kattis", "codeforces", "leetcode"]
 
 
@@ -26,7 +26,7 @@ def problem_completer(prefix, parsed_args, **kwargs):
     platform = getattr(parsed_args, "platform", None)
     if not platform:
         return []
-    platform_dir = os.path.join(SCRIPT_DIR, platform)
+    platform_dir = os.path.join(WORKSPACE, platform)
     if not os.path.isdir(platform_dir):
         return []
     return [d for d in os.listdir(platform_dir) if os.path.isdir(os.path.join(platform_dir, d))]
@@ -78,7 +78,7 @@ def main() -> None:
     args = parser.parse_args()
     platform = args.platform
     problem = args.problem
-    problem_dir = os.path.join(SCRIPT_DIR, platform, problem)
+    problem_dir = os.path.join(WORKSPACE, platform, problem)
     solution_java = os.path.join(problem_dir, "Solution.java")
 
     if not os.path.isfile(solution_java):

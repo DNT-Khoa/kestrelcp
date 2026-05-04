@@ -107,37 +107,40 @@ def main() -> int:
         return 2
 
     workspace = tempfile.mkdtemp(prefix="sheikah-canary-")
-    shutil.copy(new_py, workspace)
-    os.chmod(os.path.join(workspace, "new.py"), 0o755)
+    try:
+        shutil.copy(new_py, workspace)
+        os.chmod(os.path.join(workspace, "new.py"), 0o755)
 
-    all_failures: list[str] = []
-    for platform, target, min_input_lines in CANARIES:
-        print(f"\n=== Canary: {platform} ({target}) ===", flush=True)
-        fails = run_canary(workspace, platform, target, min_input_lines)
-        if fails:
-            for f in fails:
-                print(f"  FAIL  {f}", flush=True)
-            all_failures.extend(fails)
-        else:
-            print(f"  PASS", flush=True)
+        all_failures: list[str] = []
+        for platform, target, min_input_lines in CANARIES:
+            print(f"\n=== Canary: {platform} ({target}) ===", flush=True)
+            fails = run_canary(workspace, platform, target, min_input_lines)
+            if fails:
+                for f in fails:
+                    print(f"  FAIL  {f}", flush=True)
+                all_failures.extend(fails)
+            else:
+                print(f"  PASS", flush=True)
 
-    print()
-    if all_failures:
-        print("--- Summary: FAILED ---")
-        for f in all_failures:
-            print(f"  - {f}")
+        print()
+        if all_failures:
+            print("--- Summary: FAILED ---")
+            for f in all_failures:
+                print(f"  - {f}")
 
-        gh_output = os.environ.get("GITHUB_OUTPUT")
-        if gh_output:
-            with open(gh_output, "a") as fh:
-                fh.write("failures<<EOF\n")
-                for f in all_failures:
-                    fh.write(f"- {f}\n")
-                fh.write("EOF\n")
-        return 1
+            gh_output = os.environ.get("GITHUB_OUTPUT")
+            if gh_output:
+                with open(gh_output, "a") as fh:
+                    fh.write("failures<<EOF\n")
+                    for f in all_failures:
+                        fh.write(f"- {f}\n")
+                    fh.write("EOF\n")
+            return 1
 
-    print("--- Summary: all canaries passed ---")
-    return 0
+        print("--- Summary: all canaries passed ---")
+        return 0
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
 
 
 if __name__ == "__main__":

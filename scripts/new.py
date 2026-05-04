@@ -24,7 +24,7 @@ try:
 except ImportError:
     argcomplete = None
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE = os.getcwd()
 
 SOLUTION_TEMPLATE = """\
 import java.util.*;
@@ -214,7 +214,7 @@ def fetch_codeforces(url: str) -> tuple[list[tuple[str, str]], str]:
 
 
 def scaffold(platform: str, problem: str, url: str | None = None) -> None:
-    problem_dir = os.path.join(SCRIPT_DIR, platform, problem)
+    problem_dir = os.path.join(WORKSPACE, platform, problem)
 
     if os.path.isdir(problem_dir):
         print(f"Already exists: {problem_dir}")
@@ -261,7 +261,7 @@ def scaffold(platform: str, problem: str, url: str | None = None) -> None:
         _touch_empty_tests(problem_dir)
         print("Tip: pass a URL as 3rd argument to auto-fetch sample tests")
 
-    print(f"\nRun: ./test.py {platform} {problem}")
+    print(f"\nNext: open {os.path.join(platform, problem, 'Solution.java')} and click the ▶ button on the problem in the Sheikah sidebar to run tests.")
 
 
 def fetch_page(platform: str, url: str) -> tuple[list[tuple[str, str]], str]:
@@ -305,7 +305,7 @@ def refetch_samples(platform: str, problem: str, url: str | None = None) -> None
     Use this to repair problems whose samples were saved by an older buggy
     scraper, without losing in-progress solution code.
     """
-    problem_dir = os.path.join(SCRIPT_DIR, platform, problem)
+    problem_dir = os.path.join(WORKSPACE, platform, problem)
     if not os.path.isdir(problem_dir):
         print(f"Not found: {problem_dir}", file=sys.stderr)
         sys.exit(1)
@@ -315,7 +315,7 @@ def refetch_samples(platform: str, problem: str, url: str | None = None) -> None
         if not url:
             print(
                 f"Could not find a [Problem](url) line in {problem_dir}/notes.md. "
-                f"Pass the URL explicitly: ./new.py --refetch {platform} {problem} <url>",
+                f"Add one (e.g. `[Problem](https://...)`) and re-run Sheikah: Refetch All Sample Tests.",
                 file=sys.stderr,
             )
             sys.exit(1)

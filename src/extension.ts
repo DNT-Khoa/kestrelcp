@@ -37,9 +37,8 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   if (vscode.workspace.workspaceFolders?.[0]) {
-    const watcher = vscode.workspace.createFileSystemWatcher(
-      "**/{Solution,Playground}.java",
-    );
+    const watcher =
+      vscode.workspace.createFileSystemWatcher("**/*.{java,in,out}");
     watcher.onDidCreate(() => provider.refresh());
     watcher.onDidDelete(() => provider.refresh());
     context.subscriptions.push(watcher);

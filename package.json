@@ -67,7 +67,7 @@
         {
           "id": "sheikah",
           "title": "Sheikah",
-          "icon": "$(rocket)"
+          "icon": "media/icon-sidebar.svg"
         }
       ]
     },

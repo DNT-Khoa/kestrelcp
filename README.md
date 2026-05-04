@@ -8,6 +8,9 @@
 ![Language](https://img.shields.io/badge/language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Solutions](https://img.shields.io/badge/solutions-Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 
+> [!WARNING]
+> This project is still in active development. Features may change, and bugs are expected. Use at your own risk.
+
 > Named after the technologically advanced Sheikah clan from *Breath of the Wild* — whose **Sheikah Slate** scans, scaffolds, and solves puzzles. This extension does the same for CP problems.
 
 ---

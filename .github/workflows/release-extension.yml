@@ -84,3 +84,8 @@ jobs:
             "kestrelcp-${VERSION}.vsix" \
             --title "KestrelCP ${VERSION}" \
             --notes "$NOTES"
+
+      - name: Publish to VS Code Marketplace
+        run: npx --yes @vscode/vsce publish --packagePath "kestrelcp-${GITHUB_REF_NAME#v}.vsix" --no-yarn
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}

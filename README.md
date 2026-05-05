@@ -1,10 +1,6 @@
 <h1 align="center">KestrelCP</h1>
 
 <p align="center">
-  <img src="media/icon.png" alt="KestrelCP" width="128" height="128">
-</p>
-
-<p align="center">
   A VS Code extension for competitive programming — scaffold problems from URLs, run tests against bundled cases, and commit with AI-generated messages, all without leaving the editor.
 </p>
 

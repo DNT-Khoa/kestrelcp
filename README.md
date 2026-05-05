@@ -11,6 +11,8 @@
 > [!NOTE]
 > This extension is primarily built for my personal use — a local environment to debug and implement competitive programming solutions from Kattis, Codeforces, and LeetCode. Solutions still need to be manually submitted on each platform's official site. A nice side benefit: committing solutions to a Git repo helps keep your GitHub contribution graph active.
 >
+> **Currently only Java is supported** as the solution language. Support for other languages may come in the future.
+>
 > If you find it useful, feel free to use it! Suggestions and new features are welcome via pull requests.
 
 ---

@@ -98,14 +98,17 @@ export class ProblemsTreeProvider implements vscode.TreeDataProvider<Item> {
 }
 
 export class Item extends vscode.TreeItem {
+  declare contextValue: "platform" | "problem" | "playground";
+
   constructor(
     label: string,
     state: vscode.TreeItemCollapsibleState,
-    public override contextValue: "platform" | "problem" | "playground",
+    contextValue: "platform" | "problem" | "playground",
     public platform: string,
     public problem?: string,
   ) {
     super(label, state);
+    this.contextValue = contextValue;
     this.iconPath =
       contextValue === "platform"
         ? new vscode.ThemeIcon("folder")

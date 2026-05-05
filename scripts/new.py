@@ -261,7 +261,7 @@ def scaffold(platform: str, problem: str, url: str | None = None) -> None:
         _touch_empty_tests(problem_dir)
         print("Tip: pass a URL as 3rd argument to auto-fetch sample tests")
 
-    print(f"\nNext: open {os.path.join(platform, problem, 'Solution.java')} and click the ▶ button on the problem in the Sheikah sidebar to run tests.")
+    print(f"\nNext: open {os.path.join(platform, problem, 'Solution.java')} and click the ▶ button on the problem in the KestrelCP sidebar to run tests.")
 
 
 def fetch_page(platform: str, url: str) -> tuple[list[tuple[str, str]], str]:
@@ -315,7 +315,7 @@ def refetch_samples(platform: str, problem: str, url: str | None = None) -> None
         if not url:
             print(
                 f"Could not find a [Problem](url) line in {problem_dir}/notes.md. "
-                f"Add one (e.g. `[Problem](https://...)`) and re-run Sheikah: Refetch All Sample Tests.",
+                f"Add one (e.g. `[Problem](https://...)`) and re-run KestrelCP: Refetch All Sample Tests.",
                 file=sys.stderr,
             )
             sys.exit(1)

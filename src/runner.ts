@@ -9,7 +9,7 @@ export async function runInTerminal(cmd: string): Promise<void> {
 
   const apiKey =
     vscode.workspace
-      .getConfiguration("sheikah")
+      .getConfiguration("kestrelcp")
       .get<string>("anthropicApiKey") || "";
 
   if (
@@ -23,7 +23,7 @@ export async function runInTerminal(cmd: string): Promise<void> {
     if (apiKey) env["ANTHROPIC_API_KEY"] = apiKey;
 
     cachedTerminal = vscode.window.createTerminal({
-      name: "Sheikah",
+      name: "KestrelCP",
       cwd: root,
       env,
     });

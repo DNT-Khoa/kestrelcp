@@ -1,6 +1,6 @@
 {
-  "name": "sheikah",
-  "displayName": "Sheikah",
+  "name": "kestrelcp",
+  "displayName": "KestrelCP",
   "description": "Scaffold, test, and commit competitive programming solutions for Kattis, Codeforces, and LeetCode.",
   "version": "0.6.3",
   "publisher": "khoa-doan",
@@ -10,7 +10,7 @@
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/DNT-Khoa/sheikah.git"
+    "url": "https://github.com/DNT-Khoa/kestrelcp.git"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -25,56 +25,56 @@
   "contributes": {
     "commands": [
       {
-        "command": "sheikah.init",
-        "title": "Sheikah: Initialize Workspace"
+        "command": "kestrelcp.init",
+        "title": "KestrelCP: Initialize Workspace"
       },
       {
-        "command": "sheikah.newProblem",
-        "title": "Sheikah: New Problem",
+        "command": "kestrelcp.newProblem",
+        "title": "KestrelCP: New Problem",
         "icon": "$(add)"
       },
       {
-        "command": "sheikah.runTests",
-        "title": "Sheikah: Run Tests",
+        "command": "kestrelcp.runTests",
+        "title": "KestrelCP: Run Tests",
         "icon": "$(play)"
       },
       {
-        "command": "sheikah.runTestsForCurrent",
-        "title": "Sheikah: Run Tests for Current File"
+        "command": "kestrelcp.runTestsForCurrent",
+        "title": "KestrelCP: Run Tests for Current File"
       },
       {
-        "command": "sheikah.refetchAllTests",
-        "title": "Sheikah: Refetch All Sample Tests",
+        "command": "kestrelcp.refetchAllTests",
+        "title": "KestrelCP: Refetch All Sample Tests",
         "icon": "$(cloud-download)"
       },
       {
-        "command": "sheikah.aiCommit",
-        "title": "Sheikah: AI Commit"
+        "command": "kestrelcp.aiCommit",
+        "title": "KestrelCP: AI Commit"
       },
       {
-        "command": "sheikah.runPlayground",
-        "title": "Sheikah: Run Playground",
+        "command": "kestrelcp.runPlayground",
+        "title": "KestrelCP: Run Playground",
         "icon": "$(play-circle)"
       },
       {
-        "command": "sheikah.refreshProblems",
-        "title": "Sheikah: Refresh Problems",
+        "command": "kestrelcp.refreshProblems",
+        "title": "KestrelCP: Refresh Problems",
         "icon": "$(refresh)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "sheikah",
-          "title": "Sheikah",
+          "id": "kestrelcp",
+          "title": "KestrelCP",
           "icon": "media/icon-sidebar.svg"
         }
       ]
     },
     "views": {
-      "sheikah": [
+      "kestrelcp": [
         {
-          "id": "sheikah.problems",
+          "id": "kestrelcp.problems",
           "name": "Problems"
         }
       ]
@@ -82,44 +82,44 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "sheikah.runTests",
+          "command": "kestrelcp.runTests",
           "when": "false"
         }
       ],
       "view/title": [
         {
-          "command": "sheikah.newProblem",
-          "when": "view == sheikah.problems",
+          "command": "kestrelcp.newProblem",
+          "when": "view == kestrelcp.problems",
           "group": "navigation@1"
         },
         {
-          "command": "sheikah.refreshProblems",
-          "when": "view == sheikah.problems",
+          "command": "kestrelcp.refreshProblems",
+          "when": "view == kestrelcp.problems",
           "group": "navigation@2"
         }
       ],
       "view/item/context": [
         {
-          "command": "sheikah.runTests",
-          "when": "view == sheikah.problems && viewItem == problem",
+          "command": "kestrelcp.runTests",
+          "when": "view == kestrelcp.problems && viewItem == problem",
           "group": "inline"
         },
         {
-          "command": "sheikah.runPlayground",
-          "when": "view == sheikah.problems && viewItem == playground",
+          "command": "kestrelcp.runPlayground",
+          "when": "view == kestrelcp.problems && viewItem == playground",
           "group": "inline"
         }
       ]
     },
     "configuration": {
-      "title": "Sheikah",
+      "title": "KestrelCP",
       "properties": {
-        "sheikah.pythonPath": {
+        "kestrelcp.pythonPath": {
           "type": "string",
           "default": "python3",
           "description": "Python 3 interpreter used to run new.py / test.py / commit.py."
         },
-        "sheikah.platforms": {
+        "kestrelcp.platforms": {
           "type": "array",
           "items": {
             "type": "string"
@@ -131,7 +131,7 @@
           ],
           "description": "Platforms surfaced in the sidebar."
         },
-        "sheikah.anthropicApiKey": {
+        "kestrelcp.anthropicApiKey": {
           "type": "string",
           "default": "",
           "description": "Anthropic API key for AI commit messages. Leave blank to inherit from the shell environment."

@@ -1,4 +1,4 @@
-# Sheikah — Development
+# KestrelCP — Development
 
 Internal docs for working on the extension itself: dev loop, testing, CI, release.
 
@@ -9,7 +9,7 @@ For user-facing docs, see [README.md](./README.md).
 ## 📁 Repo layout
 
 ```
-sheikah/
+kestrelcp/
 ├── package.json              ← extension manifest (incl. marketplace icon)
 ├── tsconfig.json
 ├── src/
@@ -20,7 +20,8 @@ sheikah/
 ├── tests/
 │   └── canary.py             ← scraper canary (run by CI)
 ├── media/
-│   ├── icon.svg              ← Sheikah emblem source
+│   ├── icon.svg              ← KestrelCP icon source (Rubik's cube)
+│   ├── icon-sidebar.svg      ← Activity bar icon (24×24 monochrome)
 │   └── icon.png              ← 256×256 marketplace logo
 ├── .vscode/{launch,tasks}.json   ← F5 to debug
 └── .github/
@@ -32,7 +33,7 @@ sheikah/
         └── release_notes.py      ← AI-curated release notes (called by release workflow)
 ```
 
-The `scripts/` directory ships in the `.vsix` and the extension invokes those scripts directly from the install location (`~/.vscode/extensions/khoa-doan.sheikah-X.Y.Z/scripts/`) — they are **not** copied into user workspaces. That means script fixes flow to users automatically as soon as they upgrade the extension; no per-workspace re-init needed.
+The `scripts/` directory ships in the `.vsix` and the extension invokes those scripts directly from the install location (`~/.vscode/extensions/khoa-doan.kestrelcp-X.Y.Z/scripts/`) — they are **not** copied into user workspaces. That means script fixes flow to users automatically as soon as they upgrade the extension; no per-workspace re-init needed.
 
 ---
 
@@ -44,22 +45,22 @@ npm run compile
 # F5 in VS Code → launches a dev instance with the extension loaded
 ```
 
-In the dev instance: open any folder → **Sheikah: Initialize Workspace** → creates `kattis/` / `codeforces/` / `leetcode/` / `playground/Playground.java` → ready to test. (The Python scripts run from the extension's install dir, not from the workspace, so there's nothing to copy.)
+In the dev instance: open any folder → **KestrelCP: Initialize Workspace** → creates `kattis/` / `codeforces/` / `leetcode/` / `playground/Playground.java` → ready to test. (The Python scripts run from the extension's install dir, not from the workspace, so there's nothing to copy.)
 
 ### Manual test plan
 
 Use this checklist after any code change to verify everything still works end-to-end.
 
 1. **Launch the dev instance**
-   - In the sheikah repo window, press **F5** (or **Run** → *Start Debugging*).
+   - In the kestrelcp repo window, press **F5** (or **Run** → *Start Debugging*).
    - A new VS Code window titled **[Extension Development Host]** opens with the extension active.
 
 2. **Open a test workspace**
-   - **File → Open Folder…** → pick a fresh empty folder (e.g. `~/tmp/sheikah-test`). Don't reuse the sheikah repo itself — it'll get cluttered with `kattis/`, `codeforces/`, etc.
+   - **File → Open Folder…** → pick a fresh empty folder (e.g. `~/tmp/kestrelcp-test`). Don't reuse the kestrelcp repo itself — it'll get cluttered with `kattis/`, `codeforces/`, etc.
 
 3. **Initialize and check the sidebar**
-   - **Cmd+Shift+P** → **Sheikah: Initialize Workspace**.
-   - Click the 🚀 rocket in the activity bar. The Problems sidebar should show:
+   - **Cmd+Shift+P** → **KestrelCP: Initialize Workspace**.
+   - Click the cube icon in the activity bar. The Problems sidebar should show:
      ```
      🧪 Playground       ← inline ▶ on hover
      📁 kattis
@@ -72,30 +73,30 @@ Use this checklist after any code change to verify everything still works end-to
    | Action | Expected |
    |---|---|
    | Click the **Playground** label | `playground/Playground.java` opens with the `main` template |
-   | Hover the row → click ▶ | A `Sheikah` terminal runs `( cd playground && javac *.java && java Playground )` and prints `Hello from Sheikah playground.` |
+   | Hover the row → click ▶ | A `KestrelCP` terminal runs `( cd playground && javac *.java && java Playground )` and prints `Hello from KestrelCP playground.` |
    | Edit `Playground.java`, save, click ▶ again | Recompiles and prints the new output |
    | Add a `playground/Helper.java` class, call it from `Playground.main`, click ▶ | Both compile; `java Playground` uses `Helper` |
-   | Cmd+Shift+P → **Sheikah: Run Playground** | Same as the ▶ button |
+   | Cmd+Shift+P → **KestrelCP: Run Playground** | Same as the ▶ button |
 
 5. **Test problem flows** (regression check)
-   - **Sheikah: New Problem** → pick a platform, paste a URL or slug → folder + sample tests scaffolded.
+   - **KestrelCP: New Problem** → pick a platform, paste a URL or slug → folder + sample tests scaffolded.
    - Click a problem in the sidebar → `Solution.java` opens.
    - Hover the problem → click ▶ → tests run.
-   - **Sheikah: Run Tests for Current File** with `Solution.java` open → tests run.
+   - **KestrelCP: Run Tests for Current File** with `Solution.java` open → tests run.
 
 6. **Test AI commit** (requires `ANTHROPIC_API_KEY`)
    - Stage some changes in Source Control.
-   - **Sheikah: AI Commit** → terminal proposes a Conventional Commit message; respond with `y` / `n` / `e`.
+   - **KestrelCP: AI Commit** → terminal proposes a Conventional Commit message; respond with `y` / `n` / `e`.
 
 7. **Test refetch (bulk repair flow)**
    - Scaffold 2–3 problems across different platforms (e.g. `645/A` on Codeforces, `oddecho` on Kattis).
    - Edit one `Solution.java` with a recognizable comment so you can verify it survives.
    - Manually corrupt one or more `*.in` files (overwrite their contents with any junk string, e.g. `bogus`) to simulate the old-buggy-scraper state.
-   - **Cmd+Shift+P → Sheikah: Refetch All Sample Tests**.
+   - **Cmd+Shift+P → KestrelCP: Refetch All Sample Tests**.
    - A confirmation modal should show the per-platform problem counts.
-   - Confirm. Terminal should iterate over every problem and end with `Sheikah: refetch complete.`
+   - Confirm. Terminal should iterate over every problem and end with `KestrelCP: refetch complete.`
    - Verify: corrupted `*.in` files restored to correct content, `Solution.java` still has your comment, `notes.md` untouched.
-   - Edge case: with no problems scaffolded, the command should show `Sheikah: no problems to refetch.` instead of running the loop.
+   - Edge case: with no problems scaffolded, the command should show `KestrelCP: no problems to refetch.` instead of running the loop.
 
 ### Iterating
 
@@ -138,13 +139,13 @@ Releases are driven by two chained workflows — no local tagging required.
 1. Push your changes to `main`.
 2. GitHub → **Actions** → **Bump version and tag** → **Run workflow**, branch `main`, pick `patch` / `minor` / `major`.
    - Bumps `version` in `package.json`, commits as `chore: release vX.Y.Z`, creates tag `vX.Y.Z`, pushes both.
-3. The pushed tag triggers **Release VS Code Extension**, which builds `sheikah-X.Y.Z.vsix` and attaches it to a new GitHub release.
+3. The pushed tag triggers **Release VS Code Extension**, which builds `kestrelcp-X.Y.Z.vsix` and attaches it to a new GitHub release.
 
 Pull `main` afterward to get the bump commit locally, then install the new build:
 
 ```bash
 git pull --rebase --tags origin main
-code --install-extension sheikah-X.Y.Z.vsix
+code --install-extension kestrelcp-X.Y.Z.vsix
 ```
 
 ### One-time PAT setup (required for chained triggering)
@@ -153,7 +154,7 @@ GitHub deliberately does **not** fire downstream workflows when an action uses t
 
 1. https://github.com/settings/personal-access-tokens → **Generate new token (fine-grained)**.
 2. Set an expiration that fits your renewal cadence (e.g. 1 year).
-3. **Repository access** → click **"Only select repositories"** → pick `DNT-Khoa/sheikah`.
+3. **Repository access** → click **"Only select repositories"** → pick `DNT-Khoa/kestrelcp`.
    - ⚠️ **Don't pick "Public Repositories (read-only)"** — it hides the per-repo permission options entirely. The "Contents" setting in the next step only appears once a non-public-only scope is selected.
 4. **Scroll past the "Account permissions" section** (Profile, SSH keys, etc.) to **"Repository permissions"** (which appears only after step 3).
 5. Set **Contents** → **Read and write**. **Metadata** is auto-set to Read-only — leave it. Everything else: "No access".
@@ -169,7 +170,7 @@ The bump workflow ([`.github/workflows/bump-version.yml`](.github/workflows/bump
 **`remote: Write access to repository not granted` (HTTP 403) during checkout** — the PAT is reaching the action but lacks write permission. Fix:
 
 - Go back to https://github.com/settings/personal-access-tokens → click the token name.
-- Confirm **Repository access** is "Only select repositories" (or "All repositories"), with `DNT-Khoa/sheikah` listed.
+- Confirm **Repository access** is "Only select repositories" (or "All repositories"), with `DNT-Khoa/kestrelcp` listed.
 - Confirm **Repository permissions → Contents** is **Read and write** (not "Read-only", not "No access"). If you can't see a Contents option at all, your Repository access is still set to "Public Repositories (read-only)" — fix that first.
 - Save. The token value stays the same, so the `RELEASE_PAT` secret doesn't need to be re-pasted.
 
@@ -209,4 +210,4 @@ python3 .github/scripts/release_notes.py v0.2.0 0.3.0
 
 The first arg is the previous tag (or empty string for the initial release); the second is the version being released (no leading `v`).
 
-> **Distribution model**: Sheikah currently ships as a `.vsix` on GitHub Releases. Sideloaded extensions don't auto-update — users re-install for new versions. Publishing to the [VS Code Marketplace](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) is the natural next step once usage justifies it; that gives users in-editor auto-updates and discovery.
+> **Distribution model**: KestrelCP currently ships as a `.vsix` on GitHub Releases. Sideloaded extensions don't auto-update — users re-install for new versions. Publishing to the [VS Code Marketplace](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) is the natural next step once usage justifies it; that gives users in-editor auto-updates and discovery.

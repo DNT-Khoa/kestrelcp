@@ -1,4 +1,4 @@
-# Sheikah — Architecture & Design Guide
+# KestrelCP — Architecture & Design Guide
 
 A comprehensive walkthrough of how this VS Code extension is built, aimed at someone who has never developed a VS Code extension before. Covers every file, every design decision, and how all the pieces connect.
 
@@ -40,7 +40,7 @@ The extension runs in VS Code's **Extension Host** process — a separate Node.j
 ## 2. Project Structure
 
 ```
-sheikah/
+kestrelcp/
 ├── package.json          ← Extension manifest — THE most important file
 ├── tsconfig.json         ← TypeScript compiler config
 ├── src/
@@ -54,7 +54,8 @@ sheikah/
 ├── tests/
 │   └── canary.py         ← CI smoke test for scrapers
 ├── media/
-│   ├── icon.svg          ← Source artwork
+│   ├── icon.svg          ← Source artwork (Rubik's cube)
+│   ├── icon-sidebar.svg  ← Activity bar icon (24×24 monochrome)
 │   └── icon.png          ← 256×256 marketplace icon
 ├── DEVELOPMENT.md        ← Internal dev docs
 └── README.md             ← User-facing docs
@@ -78,8 +79,8 @@ This is the most important file in any VS Code extension. VS Code reads it to un
 
 ```json
 {
-  "name": "sheikah",
-  "displayName": "Sheikah",
+  "name": "kestrelcp",
+  "displayName": "KestrelCP",
   "version": "0.5.0",
   "publisher": "khoa-doan",
   "main": "./out/extension.js",
@@ -87,7 +88,7 @@ This is the most important file in any VS Code extension. VS Code reads it to un
 }
 ```
 
-- **`name`** — The npm-style package name (lowercase, no spaces). Combined with `publisher` to form the extension ID: `khoa-doan.sheikah`.
+- **`name`** — The npm-style package name (lowercase, no spaces). Combined with `publisher` to form the extension ID: `khoa-doan.kestrelcp`.
 - **`main`** — Points to the compiled JavaScript entry point. TypeScript compiles `src/extension.ts` → `out/extension.js`.
 - **`engines.vscode`** — The minimum VS Code version required. `^1.85.0` means 1.85.0 or newer. This controls which VS Code APIs you can use.
 
@@ -99,11 +100,11 @@ This is the most important file in any VS Code extension. VS Code reads it to un
 
 VS Code is lazy — it doesn't load your extension until it's needed. **Activation events** declare _when_ to load it. Options include:
 
-- `onCommand:sheikah.init` — activate only when a specific command is invoked.
-- `onView:sheikah.problems` — activate when the sidebar view becomes visible.
+- `onCommand:kestrelcp.init` — activate only when a specific command is invoked.
+- `onView:kestrelcp.problems` — activate when the sidebar view becomes visible.
 - `onStartupFinished` — activate after VS Code finishes starting up.
 
-**Decision:** Sheikah uses `onStartupFinished` because the sidebar tree view needs to be populated immediately — the user expects to see their problems listed as soon as they open VS Code. Using a more targeted event like `onView:` would also work, but `onStartupFinished` is simpler and the extension is lightweight enough that the startup cost is negligible.
+**Decision:** KestrelCP uses `onStartupFinished` because the sidebar tree view needs to be populated immediately — the user expects to see their problems listed as soon as they open VS Code. Using a more targeted event like `onView:` would also work, but `onStartupFinished` is simpler and the extension is lightweight enough that the startup cost is negligible.
 
 ### Commands
 
@@ -111,12 +112,12 @@ VS Code is lazy — it doesn't load your extension until it's needed. **Activati
 "contributes": {
   "commands": [
     {
-      "command": "sheikah.init",
-      "title": "Sheikah: Initialize Workspace"
+      "command": "kestrelcp.init",
+      "title": "KestrelCP: Initialize Workspace"
     },
     {
-      "command": "sheikah.newProblem",
-      "title": "Sheikah: New Problem",
+      "command": "kestrelcp.newProblem",
+      "title": "KestrelCP: New Problem",
       "icon": "$(add)"
     },
     ...
@@ -137,14 +138,14 @@ Declaring a command here _only registers it in the UI_. The actual handler is re
 ```json
 "viewsContainers": {
   "activitybar": [{
-    "id": "sheikah",
-    "title": "Sheikah",
-    "icon": "$(rocket)"
+    "id": "kestrelcp",
+    "title": "KestrelCP",
+    "icon": "media/icon-sidebar.svg"
   }]
 },
 "views": {
-  "sheikah": [{
-    "id": "sheikah.problems",
+  "kestrelcp": [{
+    "id": "kestrelcp.problems",
     "name": "Problems"
   }]
 }
@@ -152,32 +153,32 @@ Declaring a command here _only registers it in the UI_. The actual handler is re
 
 This creates:
 
-1. A **view container** — the rocket icon in the activity bar (the vertical icon strip on the far left/right of VS Code).
+1. A **view container** — the cube icon in the activity bar (the vertical icon strip on the far left/right of VS Code).
 2. A **view** inside that container — the "Problems" panel. Its content is populated by a `TreeDataProvider` registered in code.
 
-**Decision:** Using the activity bar (not the Explorer sidebar) gives Sheikah its own dedicated space. Competitive programmers will have many problems listed; mixing them into the Explorer would be noisy.
+**Decision:** Using the activity bar (not the Explorer sidebar) gives KestrelCP its own dedicated space. Competitive programmers will have many problems listed; mixing them into the Explorer would be noisy.
 
 ### Menus
 
 ```json
 "menus": {
   "commandPalette": [
-    { "command": "sheikah.runTests", "when": "false" }
+    { "command": "kestrelcp.runTests", "when": "false" }
   ],
   "view/title": [
-    { "command": "sheikah.newProblem", "when": "view == sheikah.problems", "group": "navigation@1" },
-    { "command": "sheikah.refreshProblems", "when": "view == sheikah.problems", "group": "navigation@2" }
+    { "command": "kestrelcp.newProblem", "when": "view == kestrelcp.problems", "group": "navigation@1" },
+    { "command": "kestrelcp.refreshProblems", "when": "view == kestrelcp.problems", "group": "navigation@2" }
   ],
   "view/item/context": [
-    { "command": "sheikah.runTests", "when": "view == sheikah.problems && viewItem == problem", "group": "inline" },
-    { "command": "sheikah.runPlayground", "when": "view == sheikah.problems && viewItem == playground", "group": "inline" }
+    { "command": "kestrelcp.runTests", "when": "view == kestrelcp.problems && viewItem == problem", "group": "inline" },
+    { "command": "kestrelcp.runPlayground", "when": "view == kestrelcp.problems && viewItem == playground", "group": "inline" }
   ]
 }
 ```
 
 Menus control _where_ commands appear and _when_ they're visible:
 
-- **`commandPalette`** — `"when": "false"` hides `sheikah.runTests` from the Command Palette entirely. It only makes sense as a contextual action on a specific problem in the tree, not as a global command.
+- **`commandPalette`** — `"when": "false"` hides `kestrelcp.runTests` from the Command Palette entirely. It only makes sense as a contextual action on a specific problem in the tree, not as a global command.
 - **`view/title`** — buttons in the header of the Problems view (the `+` and refresh icons).
 - **`view/item/context`** with `"group": "inline"` — action buttons that appear inline when hovering a tree item. The `when` clause uses `viewItem` to match the tree item's `contextValue` (set in `tree.ts`), so the ▶ play button only appears on problems, and the playground play button only on the Playground item.
 - **`@1`, `@2`** — ordering suffixes within a menu group.
@@ -186,19 +187,19 @@ Menus control _where_ commands appear and _when_ they're visible:
 
 ```json
 "configuration": {
-  "title": "Sheikah",
+  "title": "KestrelCP",
   "properties": {
-    "sheikah.pythonPath": {
+    "kestrelcp.pythonPath": {
       "type": "string",
       "default": "python3",
       "description": "Python 3 interpreter used to run new.py / test.py / commit.py."
     },
-    "sheikah.platforms": {
+    "kestrelcp.platforms": {
       "type": "array",
       "default": ["kattis", "codeforces", "leetcode"],
       "description": "Platforms surfaced in the sidebar."
     },
-    "sheikah.anthropicApiKey": {
+    "kestrelcp.anthropicApiKey": {
       "type": "string",
       "default": "",
       "description": "Anthropic API key for AI commit messages."
@@ -207,7 +208,7 @@ Menus control _where_ commands appear and _when_ they're visible:
 }
 ```
 
-These appear in VS Code's Settings UI under "Sheikah". Code reads them via `vscode.workspace.getConfiguration('sheikah').get<T>('key')`.
+These appear in VS Code's Settings UI under "KestrelCP". Code reads them via `vscode.workspace.getConfiguration('kestrelcp').get<T>('key')`.
 
 **Decision:** The `anthropicApiKey` setting has an empty default. When empty, the extension passes no extra env var, and `commit.py` falls back to reading `ANTHROPIC_API_KEY` from the user's shell environment. This gives two options: settings UI for convenience, or env var for security (settings are stored in plain-text JSON on disk).
 
@@ -224,7 +225,7 @@ export function activate(context: vscode.ExtensionContext) { ... }
 export function deactivate() {}
 ```
 
-**`activate()`** is called once when the extension starts. **`deactivate()`** is called when the extension is unloaded (VS Code closing, extension disabled) — Sheikah has nothing to clean up, so it's empty.
+**`activate()`** is called once when the extension starts. **`deactivate()`** is called when the extension is unloaded (VS Code closing, extension disabled) — KestrelCP has nothing to clean up, so it's empty.
 
 #### The ExtensionContext
 
@@ -232,7 +233,7 @@ export function deactivate() {}
 extensionRoot = context.extensionPath;
 ```
 
-`context.extensionPath` gives the absolute path to where the extension is installed on disk (e.g., `~/.vscode/extensions/khoa-doan.sheikah-0.5.0/`). This is how the extension locates the bundled Python scripts.
+`context.extensionPath` gives the absolute path to where the extension is installed on disk (e.g., `~/.vscode/extensions/khoa-doan.kestrelcp-0.5.0/`). This is how the extension locates the bundled Python scripts.
 
 `context.subscriptions` is a disposal array — anything pushed into it gets automatically cleaned up when the extension deactivates. This prevents resource leaks.
 
@@ -240,13 +241,13 @@ extensionRoot = context.extensionPath;
 
 ```typescript
 context.subscriptions.push(
-  vscode.commands.registerCommand('sheikah.init', () => initWorkspace(provider)),
-  vscode.commands.registerCommand('sheikah.runTests', (item?: Item) => runTests(item)),
+  vscode.commands.registerCommand('kestrelcp.init', () => initWorkspace(provider)),
+  vscode.commands.registerCommand('kestrelcp.runTests', (item?: Item) => runTests(item)),
   ...
 );
 ```
 
-Each `registerCommand` call connects a command ID (from `package.json`) to a TypeScript handler function. Note that `sheikah.runTests` receives an `item` parameter — when triggered from a tree view context menu, VS Code passes the clicked tree item as the first argument.
+Each `registerCommand` call connects a command ID (from `package.json`) to a TypeScript handler function. Note that `kestrelcp.runTests` receives an `item` parameter — when triggered from a tree view context menu, VS Code passes the clicked tree item as the first argument.
 
 #### FileSystemWatcher
 
@@ -278,7 +279,7 @@ The quoting follows the standard POSIX technique: end the current single-quoted 
 ```typescript
 function bundledScript(name: string): string {
   const pythonPath =
-    vscode.workspace.getConfiguration("sheikah").get<string>("pythonPath") ||
+    vscode.workspace.getConfiguration("kestrelcp").get<string>("pythonPath") ||
     "python3";
   return `${shellQuote(pythonPath)} ${shellQuote(path.join(extensionRoot, "scripts", name))}`;
 }
@@ -407,11 +408,11 @@ This is why all the "heavy" logic (compilation, test comparison, scraping) lives
 if (!cachedTerminal || cachedTerminal.exitStatus !== undefined || apiKey !== cachedApiKey) {
   cachedTerminal?.dispose();
   ...
-  cachedTerminal = vscode.window.createTerminal({ name: 'Sheikah', cwd: root, env });
+  cachedTerminal = vscode.window.createTerminal({ name: "KestrelCP", cwd: root, env });
 }
 ```
 
-Creating a terminal is expensive (spawns a shell process), so the extension reuses a single "Sheikah" terminal. It creates a new one only when:
+Creating a terminal is expensive (spawns a shell process), so the extension reuses a single "KestrelCP" terminal. It creates a new one only when:
 
 1. No terminal exists yet
 2. The previous terminal was closed (`exitStatus !== undefined`)
@@ -600,7 +601,7 @@ VS Code offers several ways to run external commands:
 - **Output Channel** — read-only log panel
 - **Task** — structured build/test execution with problem matchers
 
-Sheikah uses a terminal because:
+KestrelCP uses a terminal because:
 
 - `commit.py` requires **interactive input** (y/n/e prompt, message editing) — only terminals support this
 - Users want to **see** what's happening (compilation output, test results) in real time
@@ -619,7 +620,7 @@ The extension currently only supports Java solutions (`Solution.java`). This is 
 
 ### Why `onStartupFinished` Activation?
 
-More targeted activation events (like `onView:sheikah.problems`) would delay loading until the sidebar is opened. But `onStartupFinished` was chosen because:
+More targeted activation events (like `onView:kestrelcp.problems`) would delay loading until the sidebar is opened. But `onStartupFinished` was chosen because:
 
 - The extension is lightweight (no heavy initialization)
 - The sidebar content needs to be ready immediately
@@ -646,7 +647,7 @@ extension.ts: newProblem()
      ↓
 shellQuote(platform) + shellQuote(slugOrUrl) → terminal command
      ↓
-runner.ts: runInTerminal() → sends to Sheikah terminal
+runner.ts: runInTerminal() → sends to KestrelCP terminal
      ↓
 Terminal runs: python3 '/path/to/scripts/new.py' 'codeforces' 'https://...'
      ↓
@@ -680,7 +681,7 @@ Terminal output: "Test 1: PASS", "Test 2: FAIL", etc.
 ### Flow: User Makes an AI Commit
 
 ```
-User stages files → Cmd+Shift+P → "Sheikah: AI Commit"
+User stages files → Cmd+Shift+P → "KestrelCP: AI Commit"
      ↓
 extension.ts: aiCommit() → terminal command: python3 '/path/to/scripts/commit.py'
      ↓
@@ -715,7 +716,7 @@ npm run watch     # tsc -w -p ./ → recompile on file changes
 
 ### Debugging (F5)
 
-Pressing F5 in the sheikah repo launches a new VS Code window (the "Extension Development Host") with the extension loaded from source. You can:
+Pressing F5 in the kestrelcp repo launches a new VS Code window (the "Extension Development Host") with the extension loaded from source. You can:
 
 - Set breakpoints in TypeScript files
 - See `console.log()` output in the Debug Console
@@ -724,7 +725,7 @@ Pressing F5 in the sheikah repo launches a new VS Code window (the "Extension De
 ### Packaging
 
 ```bash
-npm run package   # vsce package → produces sheikah-X.Y.Z.vsix
+npm run package   # vsce package → produces kestrelcp-X.Y.Z.vsix
 ```
 
 `vsce` (Visual Studio Code Extension manager) bundles everything into a `.vsix` file — a ZIP archive containing `package.json`, `out/`, `scripts/`, `media/`, etc. This is what gets distributed.
@@ -737,4 +738,4 @@ The `.vsix` includes everything in the repo except what's listed in `.vscodeigno
 - `src/` (TypeScript source) — typically excluded (not needed at runtime)
 - `scripts/` (Python) — **included** (needed at runtime)
 - `media/` (icons) — **included**
-- `node_modules/` — Sheikah has zero runtime dependencies (only `devDependencies`), so nothing is bundled
+- `node_modules/` — KestrelCP has zero runtime dependencies (only `devDependencies`), so nothing is bundled

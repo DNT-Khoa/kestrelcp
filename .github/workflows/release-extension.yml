@@ -37,7 +37,7 @@ jobs:
       - name: Package
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          npx --yes @vscode/vsce package --no-yarn --no-git-tag-version "$VERSION" -o "sheikah-${VERSION}.vsix"
+          npx --yes @vscode/vsce package --no-yarn --no-git-tag-version "$VERSION" -o "kestrelcp-${VERSION}.vsix"
 
       - name: Create GitHub release
         env:
@@ -57,7 +57,7 @@ jobs:
           INSTALL_BLOCK=$(cat <<EOF
           ## Install
           \`\`\`bash
-          code --install-extension sheikah-${VERSION}.vsix
+          code --install-extension kestrelcp-${VERSION}.vsix
           \`\`\`
           EOF
           )
@@ -81,6 +81,6 @@ jobs:
           fi
 
           gh release create "$GITHUB_REF_NAME" \
-            "sheikah-${VERSION}.vsix" \
-            --title "Sheikah ${VERSION}" \
+            "kestrelcp-${VERSION}.vsix" \
+            --title "KestrelCP ${VERSION}" \
             --notes "$NOTES"

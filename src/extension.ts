@@ -11,27 +11,27 @@ export function activate(context: vscode.ExtensionContext) {
 
   const provider = new ProblemsTreeProvider(platforms);
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("sheikah.problems", provider),
-    vscode.commands.registerCommand("sheikah.init", () =>
+    vscode.window.registerTreeDataProvider("kestrelcp.problems", provider),
+    vscode.commands.registerCommand("kestrelcp.init", () =>
       initWorkspace(provider),
     ),
-    vscode.commands.registerCommand("sheikah.newProblem", () =>
+    vscode.commands.registerCommand("kestrelcp.newProblem", () =>
       newProblem(provider),
     ),
-    vscode.commands.registerCommand("sheikah.runTests", (item?: Item) =>
+    vscode.commands.registerCommand("kestrelcp.runTests", (item?: Item) =>
       runTests(item),
     ),
-    vscode.commands.registerCommand("sheikah.runTestsForCurrent", () =>
+    vscode.commands.registerCommand("kestrelcp.runTestsForCurrent", () =>
       runTestsForCurrent(),
     ),
-    vscode.commands.registerCommand("sheikah.aiCommit", () => aiCommit()),
-    vscode.commands.registerCommand("sheikah.runPlayground", () =>
+    vscode.commands.registerCommand("kestrelcp.aiCommit", () => aiCommit()),
+    vscode.commands.registerCommand("kestrelcp.runPlayground", () =>
       runPlayground(),
     ),
-    vscode.commands.registerCommand("sheikah.refetchAllTests", () =>
+    vscode.commands.registerCommand("kestrelcp.refetchAllTests", () =>
       refetchAllTests(),
     ),
-    vscode.commands.registerCommand("sheikah.refreshProblems", () =>
+    vscode.commands.registerCommand("kestrelcp.refreshProblems", () =>
       provider.refresh(),
     ),
   );
@@ -50,14 +50,14 @@ export function deactivate() {}
 function workspaceRoot(): string | undefined {
   const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!root) {
-    vscode.window.showErrorMessage("Sheikah: open a folder first.");
+    vscode.window.showErrorMessage("KestrelCP: open a folder first.");
   }
   return root;
 }
 
 function platforms(): string[] {
   return (
-    vscode.workspace.getConfiguration("sheikah").get<string[]>("platforms") ?? [
+    vscode.workspace.getConfiguration("kestrelcp").get<string[]>("platforms") ?? [
       "kattis",
       "codeforces",
       "leetcode",
@@ -71,14 +71,14 @@ function shellQuote(s: string): string {
 
 function bundledScript(name: string): string {
   const pythonPath =
-    vscode.workspace.getConfiguration("sheikah").get<string>("pythonPath") ||
+    vscode.workspace.getConfiguration("kestrelcp").get<string>("pythonPath") ||
     "python3";
   return `${shellQuote(pythonPath)} ${shellQuote(path.join(extensionRoot, "scripts", name))}`;
 }
 
 const PLAYGROUND_TEMPLATE = `public class Playground {
     public static void main(String[] args) {
-        System.out.println("Hello from Sheikah playground.");
+        System.out.println("Hello from KestrelCP playground.");
     }
 }
 `;
@@ -100,7 +100,7 @@ async function initWorkspace(provider: ProblemsTreeProvider) {
   }
   ensurePlayground(root);
 
-  vscode.window.showInformationMessage("Sheikah workspace ready.");
+  vscode.window.showInformationMessage("KestrelCP workspace ready.");
   provider.refresh();
 }
 
@@ -163,7 +163,7 @@ async function refetchAllTests() {
   }
 
   if (total === 0) {
-    vscode.window.showInformationMessage("Sheikah: no problems to refetch.");
+    vscode.window.showInformationMessage("KestrelCP: no problems to refetch.");
     return;
   }
 
@@ -188,7 +188,7 @@ async function refetchAllTests() {
     `for d in "$p"/*/; do`,
     `[ -d "$d" ] || continue;`,
     `${newPyCmd} --refetch "$p" "$(basename "$d")" || echo "  (failed: $p/$(basename "$d"))";`,
-    `done; done; echo; echo "Sheikah: refetch complete."`,
+    `done; done; echo; echo "KestrelCP: refetch complete."`,
   ].join(" ");
 
   await runInTerminal(cmd);

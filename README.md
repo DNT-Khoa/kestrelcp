@@ -1,4 +1,4 @@
-<h1 align="center">Sheikah</h1>
+<h1 align="center">KestrelCP</h1>
 
 <p align="center">
   A VS Code extension for competitive programming — scaffold problems from URLs, run tests against bundled cases, and commit with AI-generated messages, all without leaving the editor.
@@ -11,7 +11,7 @@
 > [!WARNING]
 > This project is still in active development. Features may change, and bugs are expected. Use at your own risk.
 
-> Named after the technologically advanced Sheikah clan from *Breath of the Wild* — whose **Sheikah Slate** scans, scaffolds, and solves puzzles. This extension does the same for CP problems.
+> Named after the kestrel — a small, precise falcon known for its keen eye and hovering focus. This extension gives you that same precision for competitive programming problems.
 
 ---
 
@@ -27,10 +27,10 @@
 
 ## 🚀 Install
 
-Sheikah ships as a `.vsix` attached to GitHub releases (not yet on the VS Code Marketplace). Install with:
+KestrelCP ships as a `.vsix` attached to GitHub releases (not yet on the VS Code Marketplace). Install with:
 
 ```bash
-code --install-extension sheikah-X.Y.Z.vsix
+code --install-extension kestrelcp-X.Y.Z.vsix
 ```
 
 Or in VS Code: **Extensions** panel → **⋯** menu → **Install from VSIX…**
@@ -42,7 +42,7 @@ Or in VS Code: **Extensions** panel → **⋯** menu → **Install from VSIX…*
   pip3 install requests beautifulsoup4 anthropic
   ```
 - **JDK 17+** (`javac` and `java` on `PATH`)
-- **`ANTHROPIC_API_KEY`** for **Sheikah: AI Commit** — set in your shell or in the `sheikah.anthropicApiKey` setting.
+- **`ANTHROPIC_API_KEY`** for **KestrelCP: AI Commit** — set in your shell or in the `kestrelcp.anthropicApiKey` setting.
   ```bash
   export ANTHROPIC_API_KEY=sk-ant-…
   ```
@@ -52,29 +52,29 @@ Or in VS Code: **Extensions** panel → **⋯** menu → **Install from VSIX…*
 ## 🎯 Daily workflow
 
 1. **Open VS Code on a folder** — either an existing CP folder or a brand-new one.
-2. **First time only** (optional): run **Sheikah: Initialize Workspace** from the command palette to create the `kattis/`, `codeforces/`, `leetcode/`, and `playground/Playground.java` scaffolding upfront. You can skip this — the directories are also created on demand the first time you scaffold a problem.
-3. **Click the rocket icon** in the activity bar → the **Problems** sidebar lists every problem grouped by platform.
+2. **First time only** (optional): run **KestrelCP: Initialize Workspace** from the command palette to create the `kattis/`, `codeforces/`, `leetcode/`, and `playground/Playground.java` scaffolding upfront. You can skip this — the directories are also created on demand the first time you scaffold a problem.
+3. **Click the cube icon** in the activity bar → the **Problems** sidebar lists every problem grouped by platform.
 4. **Scaffold a new problem**:
    - `+` button at the top of the Problems sidebar, or
-   - command palette → **Sheikah: New Problem**
+   - command palette → **KestrelCP: New Problem**
 
-   Pick platform, paste URL or slug, hit Enter. A `Sheikah` terminal shows the scraper running; sample tests are auto-fetched into `<platform>/<problem>/`.
+   Pick platform, paste URL or slug, hit Enter. A `KestrelCP` terminal shows the scraper running; sample tests are auto-fetched into `<platform>/<problem>/`.
 5. **Open the solution** by clicking the problem in the sidebar — it opens `Solution.java` directly.
 6. **Solve it.**
 7. **Run tests** — two ways:
    - Hover the problem in the sidebar → click the inline ▶ button
-   - Command palette → **Sheikah: Run Tests for Current File**
-8. **Commit** — stage your files in the Source Control panel, then command palette → **Sheikah: AI Commit**. Claude proposes a Conventional Commit message; type `y` / `n` / `e` to accept / abort / edit.
+   - Command palette → **KestrelCP: Run Tests for Current File**
+8. **Commit** — stage your files in the Source Control panel, then command palette → **KestrelCP: AI Commit**. Claude proposes a Conventional Commit message; type `y` / `n` / `e` to accept / abort / edit.
 
 ### 🧪 Playground
 
-Need to try a snippet without scaffolding a whole problem? **Sheikah: Initialize Workspace** also creates `playground/Playground.java` — a free-form Java scratchpad. Open it from the **Playground** entry at the top of the sidebar (beaker icon) and hit the inline ▶ button to compile + run. Add helper classes alongside it (`Helper.java`, etc.) — `javac *.java` picks them up automatically; `java Playground` is the entry point.
+Need to try a snippet without scaffolding a whole problem? **KestrelCP: Initialize Workspace** also creates `playground/Playground.java` — a free-form Java scratchpad. Open it from the **Playground** entry at the top of the sidebar (beaker icon) and hit the inline ▶ button to compile + run. Add helper classes alongside it (`Helper.java`, etc.) — `javac *.java` picks them up automatically; `java Playground` is the entry point.
 
 ### 🔄 Repairing existing problems
 
 When a scraper is fixed in a new release, or a site (Kattis / Codeforces / LeetCode) changes its HTML/API, your pre-existing `*.in` / `*.out` files won't auto-update — they're already on disk. To re-pull them across every problem in your workspace:
 
-- **Cmd+Shift+P** → **Sheikah: Refetch All Sample Tests**
+- **Cmd+Shift+P** → **KestrelCP: Refetch All Sample Tests**
 
 A confirmation modal shows the per-platform problem counts (e.g. *kattis: 2, codeforces: 5, leetcode: 1*). On confirm, every problem is re-scraped using the URL stored in its `notes.md`. Only `*.in` and `*.out` are overwritten — `Solution.java` and `notes.md` are untouched.
 
@@ -84,13 +84,13 @@ A confirmation modal shows the per-platform problem counts (e.g. *kattis: 2, cod
 
 | Command | What it does |
 |---|---|
-| `Sheikah: Initialize Workspace` | Creates platform directories and `playground/Playground.java`. Optional — directories are also created on demand. |
-| `Sheikah: New Problem` | Prompts for platform + URL/slug, scaffolds the problem folder, fetches sample tests |
-| `Sheikah: Run Tests for Current File` | Compiles `Solution.java` and checks it against every `*.in` / `*.out` for the problem containing the active file |
-| `Sheikah: Refetch All Sample Tests` | Re-runs the scrapers for every existing problem on every platform; overwrites `*.in` / `*.out` and leaves `Solution.java` / `notes.md` alone. Useful after a scraper fix or upstream site change. |
-| `Sheikah: Run Playground` | Compiles `playground/*.java` and runs `Playground` |
-| `Sheikah: AI Commit` | Generates a Conventional Commit message from staged changes via Claude (requires `ANTHROPIC_API_KEY`) |
-| `Sheikah: Refresh Problems` | Manually refreshes the sidebar |
+| `KestrelCP: Initialize Workspace` | Creates platform directories and `playground/Playground.java`. Optional — directories are also created on demand. |
+| `KestrelCP: New Problem` | Prompts for platform + URL/slug, scaffolds the problem folder, fetches sample tests |
+| `KestrelCP: Run Tests for Current File` | Compiles `Solution.java` and checks it against every `*.in` / `*.out` for the problem containing the active file |
+| `KestrelCP: Refetch All Sample Tests` | Re-runs the scrapers for every existing problem on every platform; overwrites `*.in` / `*.out` and leaves `Solution.java` / `notes.md` alone. Useful after a scraper fix or upstream site change. |
+| `KestrelCP: Run Playground` | Compiles `playground/*.java` and runs `Playground` |
+| `KestrelCP: AI Commit` | Generates a Conventional Commit message from staged changes via Claude (requires `ANTHROPIC_API_KEY`) |
+| `KestrelCP: Refresh Problems` | Manually refreshes the sidebar |
 
 ---
 
@@ -98,9 +98,9 @@ A confirmation modal shows the per-platform problem counts (e.g. *kattis: 2, cod
 
 | Setting | Default | Purpose |
 |---|---|---|
-| `sheikah.pythonPath` | `python3` | Python 3 interpreter used to invoke the bundled scrapers (≥ 3.10 required) |
-| `sheikah.platforms` | `["kattis", "codeforces", "leetcode"]` | Platforms surfaced in the sidebar |
-| `sheikah.anthropicApiKey` | `""` | Anthropic key (blank = inherit from shell env) |
+| `kestrelcp.pythonPath` | `python3` | Python 3 interpreter used to invoke the bundled scrapers (≥ 3.10 required) |
+| `kestrelcp.platforms` | `["kattis", "codeforces", "leetcode"]` | Platforms surfaced in the sidebar |
+| `kestrelcp.anthropicApiKey` | `""` | Anthropic key (blank = inherit from shell env) |
 
 ---
 
@@ -127,7 +127,7 @@ Confirm with `y` (accept), `n` (abort), or `e` (edit before committing).
 
 ## 🛠️ Contributing / development
 
-Working on the extension itself? Head to the [GitHub repo](https://github.com/DNT-Khoa/sheikah) for the dev loop, manual test plan, scraper canary, and release process.
+Working on the extension itself? Head to the [GitHub repo](https://github.com/DNT-Khoa/kestrelcp) for the dev loop, manual test plan, scraper canary, and release process.
 
 ---
 

@@ -4,58 +4,58 @@
       <stop offset="0" stop-color="#0F172A"/>
       <stop offset="1" stop-color="#1E293B"/>
     </linearGradient>
-    <linearGradient id="amber" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFCB6B"/>
-      <stop offset="0.5" stop-color="#E5704A"/>
-      <stop offset="1" stop-color="#C8541F"/>
-    </linearGradient>
-    <radialGradient id="blue" cx="0.5" cy="0.5" r="0.6">
-      <stop offset="0" stop-color="#A5F3FF"/>
-      <stop offset="0.6" stop-color="#5BC8FF"/>
-      <stop offset="1" stop-color="#0077B6"/>
-    </radialGradient>
-    <filter id="amberGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="5" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <filter id="blueGlow" x="-100%" y="-100%" width="300%" height="300%">
-      <feGaussianBlur stdDeviation="3" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
     </filter>
   </defs>
 
+  <!-- Background -->
   <rect width="256" height="256" rx="48" fill="url(#bg)"/>
 
-  <g filter="url(#amberGlow)" opacity="0.9">
-    <circle cx="128" cy="135" r="108" fill="none" stroke="url(#amber)" stroke-width="2.5"/>
+  <!-- Rubik's Cube (isometric) -->
+  <!-- cell_w=22, cell_h=13, cell_v=26 -->
+  <!-- Apex at (0,0), total 132x156, centered via translate(128,50) -->
+  <g filter="url(#shadow)" transform="translate(128, 50)">
+
+    <!-- TOP FACE - Cyan/Teal tones -->
+    <path d="M 0,0 L 22,13 L 0,26 L -22,13 Z" fill="#22D3EE" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 22,13 L 44,26 L 22,39 L 0,26 Z" fill="#A5F3FF" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 44,26 L 66,39 L 44,52 L 22,39 Z" fill="#67E8F9" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -22,13 L 0,26 L -22,39 L -44,26 Z" fill="#A5F3FF" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 0,26 L 22,39 L 0,52 L -22,39 Z" fill="#5BC8FF" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 22,39 L 44,52 L 22,65 L 0,52 Z" fill="#22D3EE" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -44,26 L -22,39 L -44,52 L -66,39 Z" fill="#67E8F9" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -22,39 L 0,52 L -22,65 L -44,52 Z" fill="#22D3EE" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 0,52 L 22,65 L 0,78 L -22,65 Z" fill="#A5F3FF" stroke="#0F172A" stroke-width="2"/>
+
+    <!-- LEFT FACE - Blue tones -->
+    <path d="M -66,39 L -44,52 L -44,78 L -66,65 Z" fill="#3B82F6" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -44,52 L -22,65 L -22,91 L -44,78 Z" fill="#2563EB" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -22,65 L 0,78 L 0,104 L -22,91 Z" fill="#3B82F6" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -66,65 L -44,78 L -44,104 L -66,91 Z" fill="#1D4ED8" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -44,78 L -22,91 L -22,117 L -44,104 Z" fill="#3B82F6" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -22,91 L 0,104 L 0,130 L -22,117 Z" fill="#2563EB" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -66,91 L -44,104 L -44,130 L -66,117 Z" fill="#3B82F6" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -44,104 L -22,117 L -22,143 L -44,130 Z" fill="#1D4ED8" stroke="#0F172A" stroke-width="2"/>
+    <path d="M -22,117 L 0,130 L 0,156 L -22,143 Z" fill="#3B82F6" stroke="#0F172A" stroke-width="2"/>
+
+    <!-- RIGHT FACE - Indigo/Purple tones -->
+    <path d="M 66,39 L 44,52 L 44,78 L 66,65 Z" fill="#6366F1" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 44,52 L 22,65 L 22,91 L 44,78 Z" fill="#818CF8" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 22,65 L 0,78 L 0,104 L 22,91 Z" fill="#6366F1" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 66,65 L 44,78 L 44,104 L 66,91 Z" fill="#818CF8" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 44,78 L 22,91 L 22,117 L 44,104 Z" fill="#6366F1" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 22,91 L 0,104 L 0,130 L 22,117 Z" fill="#818CF8" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 66,91 L 44,104 L 44,130 L 66,117 Z" fill="#6366F1" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 44,104 L 22,117 L 22,143 L 44,130 Z" fill="#818CF8" stroke="#0F172A" stroke-width="2"/>
+    <path d="M 22,117 L 0,130 L 0,156 L 22,143 Z" fill="#6366F1" stroke="#0F172A" stroke-width="2"/>
   </g>
 
-  <g filter="url(#amberGlow)">
-    <g fill="url(#amber)">
-      <path d="M 78 50 L 90 92 L 66 92 Z"/>
-      <path d="M 128 38 L 140 92 L 116 92 Z"/>
-      <path d="M 178 50 L 190 92 L 166 92 Z"/>
-
-      <path d="M 36 146
-               C 60 108, 196 108, 220 146
-               C 196 184, 60 184, 36 146 Z"/>
-
-      <path d="M 128 178
-               C 110 198, 108 226, 128 232
-               C 148 226, 146 198, 128 178 Z"/>
-    </g>
-  </g>
-
-  <g filter="url(#blueGlow)">
-    <circle cx="128" cy="146" r="22" fill="url(#blue)"/>
-    <circle cx="128" cy="146" r="7" fill="#0F172A"/>
-    <circle cx="121" cy="140" r="3.5" fill="#FFFFFF" opacity="0.85"/>
+  <!-- Sparkles -->
+  <g opacity="0.85">
+    <path d="M 42,32 L 44,26 L 46,32 L 52,34 L 46,36 L 44,42 L 42,36 L 36,34 Z" fill="#A5F3FF"/>
+    <path d="M 210,38 L 211.5,34 L 213,38 L 217,39.5 L 213,41 L 211.5,45 L 210,41 L 206,39.5 Z" fill="#FFCB6B"/>
+    <path d="M 32,215 L 33.5,211 L 35,215 L 39,216.5 L 35,218 L 33.5,222 L 32,218 L 28,216.5 Z" fill="#5BC8FF"/>
+    <path d="M 218,210 L 219,207.5 L 220,210 L 222.5,211 L 220,212 L 219,214.5 L 218,212 L 215.5,211 Z" fill="#FFCB6B"/>
   </g>
 </svg>

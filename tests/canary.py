@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Scraper canary for Sheikah.
+Scraper canary for KestrelCP.
 
 Runs scripts/new.py against a known-stable problem on each platform and
 verifies the produced 1.in / 1.out files are non-empty. If any platform's
@@ -106,7 +106,7 @@ def main() -> int:
         print(f"ERROR: cannot find scripts/new.py from cwd={project_root}", file=sys.stderr)
         return 2
 
-    workspace = tempfile.mkdtemp(prefix="sheikah-canary-")
+    workspace = tempfile.mkdtemp(prefix="kestrelcp-canary-")
     try:
         shutil.copy(new_py, workspace)
         os.chmod(os.path.join(workspace, "new.py"), 0o755)

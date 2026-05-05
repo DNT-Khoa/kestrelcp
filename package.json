@@ -119,18 +119,7 @@
           "default": "python3",
           "description": "Python 3 interpreter used to run new.py / test.py / commit.py."
         },
-        "kestrelcp.platforms": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [
-            "kattis",
-            "codeforces",
-            "leetcode"
-          ],
-          "description": "Platforms surfaced in the sidebar."
-        },
+
         "kestrelcp.anthropicApiKey": {
           "type": "string",
           "default": "",

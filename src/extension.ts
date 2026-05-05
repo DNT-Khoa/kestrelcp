@@ -56,13 +56,7 @@ function workspaceRoot(): string | undefined {
 }
 
 function platforms(): string[] {
-  return (
-    vscode.workspace.getConfiguration("kestrelcp").get<string[]>("platforms") ?? [
-      "kattis",
-      "codeforces",
-      "leetcode",
-    ]
-  );
+  return ["kattis", "codeforces", "leetcode"];
 }
 
 function shellQuote(s: string): string {

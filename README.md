@@ -15,6 +15,11 @@
 > [!WARNING]
 > This project is still in active development. Features may change, and bugs are expected. Use at your own risk.
 
+> [!NOTE]
+> This extension is primarily built for my personal use — a local environment to debug and implement competitive programming solutions from Kattis, Codeforces, and LeetCode. Solutions still need to be manually submitted on each platform's official site. A nice side benefit: committing solutions to a Git repo helps keep your GitHub contribution graph active.
+>
+> If you find it useful, feel free to use it! Suggestions and new features are welcome via pull requests.
+
 > Named after the kestrel — a small, precise falcon known for its keen eye and hovering focus. This extension gives you that same precision for competitive programming problems.
 
 ---
@@ -103,7 +108,6 @@ A confirmation modal shows the per-platform problem counts (e.g. *kattis: 2, cod
 | Setting | Default | Purpose |
 |---|---|---|
 | `kestrelcp.pythonPath` | `python3` | Python 3 interpreter used to invoke the bundled scrapers (≥ 3.10 required) |
-| `kestrelcp.platforms` | `["kattis", "codeforces", "leetcode"]` | Platforms surfaced in the sidebar |
 | `kestrelcp.anthropicApiKey` | `""` | Anthropic key (blank = inherit from shell env) |
 
 ---

@@ -194,11 +194,6 @@ Menus control _where_ commands appear and _when_ they're visible:
       "default": "python3",
       "description": "Python 3 interpreter used to run new.py / test.py / commit.py."
     },
-    "kestrelcp.platforms": {
-      "type": "array",
-      "default": ["kattis", "codeforces", "leetcode"],
-      "description": "Platforms surfaced in the sidebar."
-    },
     "kestrelcp.anthropicApiKey": {
       "type": "string",
       "default": "",
@@ -383,7 +378,7 @@ constructor(getPlatforms: () => string[]) {
 }
 ```
 
-The tree provider receives a `getPlatforms` callback instead of reading settings directly. This avoids duplicating the configuration-reading logic that already exists in `extension.ts` as the `platforms()` function.
+The tree provider receives a `getPlatforms` callback instead of owning the platform list directly. This keeps `tree.ts` decoupled from the source of the list — if the list ever becomes configurable again, only `extension.ts` needs to change.
 
 ### runner.ts — Terminal Management
 

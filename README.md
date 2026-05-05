@@ -12,9 +12,6 @@
 ![Language](https://img.shields.io/badge/language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Solutions](https://img.shields.io/badge/solutions-Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 
-> [!WARNING]
-> This project is still in active development. Features may change, and bugs are expected. Use at your own risk.
-
 > [!NOTE]
 > This extension is primarily built for my personal use — a local environment to debug and implement competitive programming solutions from Kattis, Codeforces, and LeetCode. Solutions still need to be manually submitted on each platform's official site. A nice side benefit: committing solutions to a Git repo helps keep your GitHub contribution graph active.
 >

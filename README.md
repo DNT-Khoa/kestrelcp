@@ -17,8 +17,6 @@
 >
 > If you find it useful, feel free to use it! Suggestions and new features are welcome via pull requests.
 
-> Named after the kestrel — a small, precise falcon known for its keen eye and hovering focus. This extension gives you that same precision for competitive programming problems.
-
 ---
 
 ## ⚡ What it does

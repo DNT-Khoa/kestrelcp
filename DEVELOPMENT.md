@@ -52,7 +52,7 @@ In the dev instance: open any folder → **KestrelCP: Initialize Workspace** →
 Use this checklist after any code change to verify everything still works end-to-end.
 
 1. **Launch the dev instance**
-   - In the kestrelcp repo window, press **F5** (or **Run** → *Start Debugging*).
+   - In the kestrelcp repo window, press **F5** (or **Run** → _Start Debugging_).
    - A new VS Code window titled **[Extension Development Host]** opens with the extension active.
 
 2. **Open a test workspace**
@@ -70,13 +70,13 @@ Use this checklist after any code change to verify everything still works end-to
 
 4. **Test the playground**
 
-   | Action | Expected |
-   |---|---|
-   | Click the **Playground** label | `playground/Playground.java` opens with the `main` template |
-   | Hover the row → click ▶ | A `KestrelCP` terminal runs `( cd playground && javac *.java && java Playground )` and prints `Hello from KestrelCP playground.` |
-   | Edit `Playground.java`, save, click ▶ again | Recompiles and prints the new output |
-   | Add a `playground/Helper.java` class, call it from `Playground.main`, click ▶ | Both compile; `java Playground` uses `Helper` |
-   | Cmd+Shift+P → **KestrelCP: Run Playground** | Same as the ▶ button |
+   | Action                                                                        | Expected                                                                                                                         |
+   | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+   | Click the **Playground** label                                                | `playground/Playground.java` opens with the `main` template                                                                      |
+   | Hover the row → click ▶                                                       | A `KestrelCP` terminal runs `( cd playground && javac *.java && java Playground )` and prints `Hello from KestrelCP playground.` |
+   | Edit `Playground.java`, save, click ▶ again                                   | Recompiles and prints the new output                                                                                             |
+   | Add a `playground/Helper.java` class, call it from `Playground.main`, click ▶ | Both compile; `java Playground` uses `Helper`                                                                                    |
+   | Cmd+Shift+P → **KestrelCP: Run Playground**                                   | Same as the ▶ button                                                                                                             |
 
 5. **Test problem flows** (regression check)
    - **KestrelCP: New Problem** → pick a platform, paste a URL or slug → folder + sample tests scaffolded.
@@ -210,4 +210,4 @@ python3 .github/scripts/release_notes.py v0.2.0 0.3.0
 
 The first arg is the previous tag (or empty string for the initial release); the second is the version being released (no leading `v`).
 
-> **Distribution model**: KestrelCP currently ships as a `.vsix` on GitHub Releases. Sideloaded extensions don't auto-update — users re-install for new versions. Publishing to the [VS Code Marketplace](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) is the natural next step once usage justifies it; that gives users in-editor auto-updates and discovery.
+> **Distribution model**: KestrelCP is published to the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=khoa-doan.kestrelcp) and also ships `.vsix` builds on GitHub Releases. The release workflow handles both automatically — pushing a `vX.Y.Z` tag creates a GitHub Release and publishes to the Marketplace via the `VSCE_PAT` secret.

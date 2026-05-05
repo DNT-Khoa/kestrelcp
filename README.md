@@ -29,13 +29,15 @@
 
 ## 🚀 Install
 
-KestrelCP ships as a `.vsix` attached to GitHub releases (not yet on the VS Code Marketplace). Install with:
+Search for **KestrelCP** in the VS Code Extensions panel and click **Install**.
+
+Or from the command line:
 
 ```bash
-code --install-extension kestrelcp-X.Y.Z.vsix
+code --install-extension khoa-doan.kestrelcp
 ```
 
-Or in VS Code: **Extensions** panel → **⋯** menu → **Install from VSIX…**
+Alternatively, `.vsix` builds are attached to [GitHub Releases](https://github.com/DNT-Khoa/kestrelcp/releases) for manual installation.
 
 ### Requirements
 
@@ -61,6 +63,7 @@ Or in VS Code: **Extensions** panel → **⋯** menu → **Install from VSIX…*
    - command palette → **KestrelCP: New Problem**
 
    Pick platform, paste URL or slug, hit Enter. A `KestrelCP` terminal shows the scraper running; sample tests are auto-fetched into `<platform>/<problem>/`.
+
 5. **Open the solution** by clicking the problem in the sidebar — it opens `Solution.java` directly.
 6. **Solve it.**
 7. **Run tests** — two ways:
@@ -78,30 +81,30 @@ When a scraper is fixed in a new release, or a site (Kattis / Codeforces / LeetC
 
 - **Cmd+Shift+P** → **KestrelCP: Refetch All Sample Tests**
 
-A confirmation modal shows the per-platform problem counts (e.g. *kattis: 2, codeforces: 5, leetcode: 1*). On confirm, every problem is re-scraped using the URL stored in its `notes.md`. Only `*.in` and `*.out` are overwritten — `Solution.java` and `notes.md` are untouched.
+A confirmation modal shows the per-platform problem counts (e.g. _kattis: 2, codeforces: 5, leetcode: 1_). On confirm, every problem is re-scraped using the URL stored in its `notes.md`. Only `*.in` and `*.out` are overwritten — `Solution.java` and `notes.md` are untouched.
 
 ---
 
 ## 📋 Commands
 
-| Command | What it does |
-|---|---|
-| `KestrelCP: Initialize Workspace` | Creates platform directories and `playground/Playground.java`. Optional — directories are also created on demand. |
-| `KestrelCP: New Problem` | Prompts for platform + URL/slug, scaffolds the problem folder, fetches sample tests |
-| `KestrelCP: Run Tests for Current File` | Compiles `Solution.java` and checks it against every `*.in` / `*.out` for the problem containing the active file |
-| `KestrelCP: Refetch All Sample Tests` | Re-runs the scrapers for every existing problem on every platform; overwrites `*.in` / `*.out` and leaves `Solution.java` / `notes.md` alone. Useful after a scraper fix or upstream site change. |
-| `KestrelCP: Run Playground` | Compiles `playground/*.java` and runs `Playground` |
-| `KestrelCP: AI Commit` | Generates a Conventional Commit message from staged changes via Claude (requires `ANTHROPIC_API_KEY`) |
-| `KestrelCP: Refresh Problems` | Manually refreshes the sidebar |
+| Command                                 | What it does                                                                                                                                                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KestrelCP: Initialize Workspace`       | Creates platform directories and `playground/Playground.java`. Optional — directories are also created on demand.                                                                                 |
+| `KestrelCP: New Problem`                | Prompts for platform + URL/slug, scaffolds the problem folder, fetches sample tests                                                                                                               |
+| `KestrelCP: Run Tests for Current File` | Compiles `Solution.java` and checks it against every `*.in` / `*.out` for the problem containing the active file                                                                                  |
+| `KestrelCP: Refetch All Sample Tests`   | Re-runs the scrapers for every existing problem on every platform; overwrites `*.in` / `*.out` and leaves `Solution.java` / `notes.md` alone. Useful after a scraper fix or upstream site change. |
+| `KestrelCP: Run Playground`             | Compiles `playground/*.java` and runs `Playground`                                                                                                                                                |
+| `KestrelCP: AI Commit`                  | Generates a Conventional Commit message from staged changes via Claude (requires `ANTHROPIC_API_KEY`)                                                                                             |
+| `KestrelCP: Refresh Problems`           | Manually refreshes the sidebar                                                                                                                                                                    |
 
 ---
 
 ## ⚙️ Settings
 
-| Setting | Default | Purpose |
-|---|---|---|
-| `kestrelcp.pythonPath` | `python3` | Python 3 interpreter used to invoke the bundled scrapers (≥ 3.10 required) |
-| `kestrelcp.anthropicApiKey` | `""` | Anthropic key (blank = inherit from shell env) |
+| Setting                     | Default   | Purpose                                                                    |
+| --------------------------- | --------- | -------------------------------------------------------------------------- |
+| `kestrelcp.pythonPath`      | `python3` | Python 3 interpreter used to invoke the bundled scrapers (≥ 3.10 required) |
+| `kestrelcp.anthropicApiKey` | `""`      | Anthropic key (blank = inherit from shell env)                             |
 
 ---
 
@@ -111,16 +114,16 @@ A confirmation modal shows the per-platform problem counts (e.g. *kattis: 2, cod
 - **Testing** runs `javac Solution.java`, then `java Solution` once per `*.in` with stdin redirected. Output is compared to the matching `*.out` ignoring trailing whitespace and blank lines. 5-second timeout per case.
 - **AI Commit** runs `git diff --staged`, asks Claude for a one-line Conventional Commit message with an emoji prefix:
 
-| Emoji | Type | When to use |
-|---|---|---|
-| ✨ | `feat` | New solution or feature |
-| 🐛 | `fix` | Bug fix |
-| 📝 | `docs` | Notes / README update |
-| ♻️ | `refactor` | Rewrite without changing behavior |
-| ✅ | `test` | Adding or fixing test cases |
-| 🔧 | `chore` | Tooling, config, scripts |
-| ⚡️ | `perf` | Performance improvement |
-| 💄 | `style` | Formatting only |
+| Emoji | Type       | When to use                       |
+| ----- | ---------- | --------------------------------- |
+| ✨    | `feat`     | New solution or feature           |
+| 🐛    | `fix`      | Bug fix                           |
+| 📝    | `docs`     | Notes / README update             |
+| ♻️    | `refactor` | Rewrite without changing behavior |
+| ✅    | `test`     | Adding or fixing test cases       |
+| 🔧    | `chore`    | Tooling, config, scripts          |
+| ⚡️    | `perf`     | Performance improvement           |
+| 💄    | `style`    | Formatting only                   |
 
 Confirm with `y` (accept), `n` (abort), or `e` (edit before committing).
 

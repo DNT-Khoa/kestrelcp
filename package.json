@@ -12,11 +12,20 @@
     "type": "git",
     "url": "https://github.com/DNT-Khoa/kestrelcp.git"
   },
+  "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
   },
+  "keywords": [
+    "competitive-programming",
+    "kattis",
+    "codeforces",
+    "leetcode",
+    "java"
+  ],
   "categories": [
-    "Other"
+    "Programming Languages",
+    "Testing"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -119,7 +128,6 @@
           "default": "python3",
           "description": "Python 3 interpreter used to run new.py / test.py / commit.py."
         },
-
         "kestrelcp.anthropicApiKey": {
           "type": "string",
           "default": "",

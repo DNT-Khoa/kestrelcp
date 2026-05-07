@@ -14,6 +14,8 @@
 > **Currently only Java is supported** as the solution language. Support for other languages may come in the future.
 >
 > If you find it useful, feel free to use it! Suggestions and new features are welcome via pull requests.
+>
+> Check out [cp-solutions-vault](https://github.com/DNT-Khoa/cp-solutions-vault/tree/main) to see the extension in action with a real workspace.
 
 ---
 
@@ -89,7 +91,7 @@ A confirmation modal shows the per-platform problem counts (e.g. _kattis: 2, cod
 | Command                                 | What it does                                                                                                                                                                                      |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `KestrelCP: Initialize Workspace`       | Creates platform directories and `playground/Playground.java`. Required before using any other command.                                                                                           |
-| `KestrelCP: New Problem`                | Prompts for platform + URL, scaffolds the problem folder, fetches sample tests                                                                                                               |
+| `KestrelCP: New Problem`                | Prompts for platform + URL, scaffolds the problem folder, fetches sample tests                                                                                                                    |
 | `KestrelCP: Run Tests for Current File` | Compiles `Solution.java` and checks it against every `*.in` / `*.out` for the problem containing the active file                                                                                  |
 | `KestrelCP: Refetch All Sample Tests`   | Re-runs the scrapers for every existing problem on every platform; overwrites `*.in` / `*.out` and leaves `Solution.java` / `notes.md` alone. Useful after a scraper fix or upstream site change. |
 | `KestrelCP: Run Playground`             | Compiles `playground/*.java` and runs `Playground`                                                                                                                                                |

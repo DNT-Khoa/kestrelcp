@@ -3,15 +3,11 @@
 """
 Usage:
   ./new.py <platform> <url>                       # derive folder from URL + fetch tests
-  ./new.py <platform> <problem-name>              # just scaffold (slug-fetch for leetcode)
-  ./new.py <platform> <problem-name> <url>        # scaffold + fetch tests (explicit)
 
 Examples:
   ./new.py kattis https://open.kattis.com/problems/oddecho
   ./new.py codeforces https://codeforces.com/problemset/problem/1/A
   ./new.py leetcode https://leetcode.com/problems/two-sum/
-  ./new.py leetcode two-sum                       # slug-only shorthand
-  ./new.py kattis oddecho                         # scaffold without fetch
 """
 
 import argparse
@@ -109,10 +105,10 @@ def derive_problem_name(platform: str, url: str) -> str:
 def fetch_leetcode(url: str) -> tuple[list[tuple[str, str]], str]:
     """Returns (samples, description_md) from a LeetCode problem page.
 
-    Uses LeetCode's public GraphQL endpoint. `exampleTestcases` is already
-    newline-separated, one value per parameter — grouped by params count from
-    `metaData` to form each `.in` file. Outputs are parsed from `<pre>` blocks
-    in the rendered `content` HTML.
+    Uses the LeetCode public GraphQL endpoint. The exampleTestcases field is
+    newline-separated, one value per parameter, grouped by params count from
+    metaData to form each .in file. Outputs are parsed from <pre> blocks
+    in the rendered content HTML.
     """
     import json
     import requests
@@ -220,7 +216,7 @@ def fetch_codeforces(url: str) -> tuple[list[tuple[str, str]], str]:
     return samples, description
 
 
-def scaffold(platform: str, problem: str, url: str | None = None) -> None:
+def scaffold(platform: str, problem: str, url: str) -> None:
     problem_dir = os.path.join(WORKSPACE, platform, problem)
 
     if os.path.isdir(problem_dir):
@@ -229,44 +225,34 @@ def scaffold(platform: str, problem: str, url: str | None = None) -> None:
 
     os.makedirs(problem_dir)
 
-    if url is None and platform == "leetcode":
-        url = f"https://leetcode.com/problems/{problem}/"
-
     # Write Solution.java
     solution_path = os.path.join(problem_dir, "Solution.java")
     with open(solution_path, "w") as f:
         f.write(SOLUTION_TEMPLATE)
     print(f"Created: {solution_path}")
 
-    # Fetch samples if URL provided
-    samples = []
-    if url:
-        samples, _ = fetch_page(platform, url)
+    # Fetch samples
+    samples, _ = fetch_page(platform, url)
 
     # Write notes.md
     notes_path = os.path.join(problem_dir, "notes.md")
-    link_line = f"[Problem]({url})\n\n" if url else ""
     with open(notes_path, "w") as f:
-        f.write(f"# {problem}\n\n{link_line}")
+        f.write(f"# {problem}\n\n[Problem]({url})\n\n")
     print(f"Created: {notes_path}")
 
     # Write sample tests
-    if url:
-        if samples:
-            for i, (inp, out) in enumerate(samples, start=1):
-                in_path = os.path.join(problem_dir, f"{i}.in")
-                out_path = os.path.join(problem_dir, f"{i}.out")
-                with open(in_path, "w") as f:
-                    f.write(inp if inp.endswith("\n") else inp + "\n")
-                with open(out_path, "w") as f:
-                    f.write(out if out.endswith("\n") else out + "\n")
-            print(f"Fetched {len(samples)} sample test(s) from {url}")
-        else:
-            print(f"Warning: no sample tests found at {url}")
-            _touch_empty_tests(problem_dir)
+    if samples:
+        for i, (inp, out) in enumerate(samples, start=1):
+            in_path = os.path.join(problem_dir, f"{i}.in")
+            out_path = os.path.join(problem_dir, f"{i}.out")
+            with open(in_path, "w") as f:
+                f.write(inp if inp.endswith("\n") else inp + "\n")
+            with open(out_path, "w") as f:
+                f.write(out if out.endswith("\n") else out + "\n")
+        print(f"Fetched {len(samples)} sample test(s) from {url}")
     else:
+        print(f"Warning: no sample tests found at {url}")
         _touch_empty_tests(problem_dir)
-        print("Tip: pass a URL as 3rd argument to auto-fetch sample tests")
 
     print(f"\nNext: open {os.path.join(platform, problem, 'Solution.java')} and click the ▶ button on the problem in the KestrelCP sidebar to run tests.")
 
@@ -322,7 +308,7 @@ def refetch_samples(platform: str, problem: str, url: str | None = None) -> None
         if not url:
             print(
                 f"Could not find a [Problem](url) line in {problem_dir}/notes.md. "
-                f"Add one (e.g. `[Problem](https://...)`) and re-run KestrelCP: Refetch All Sample Tests.",
+                f"Add one (e.g. [Problem](https://...)) and re-run KestrelCP: Refetch All Sample Tests.",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -351,11 +337,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         prog="new.py",
         description="Scaffold a new competitive programming problem.",
-        usage="./new.py <platform> <problem> [url]",
+        usage="./new.py <platform> <url>",
     )
     parser.add_argument("platform", choices=["kattis", "codeforces", "leetcode"])
-    parser.add_argument("problem_or_url", help="problem name/slug OR a full problem URL")
-    parser.add_argument("url", nargs="?", help="problem page URL (omit if first arg is a URL)")
+    parser.add_argument("problem_or_url", help="full problem URL")
+    parser.add_argument("url", nargs="?", help=argparse.SUPPRESS)
     parser.add_argument(
         "--refetch",
         action="store_true",
@@ -373,17 +359,16 @@ def main() -> None:
         refetch_samples(args.platform, args.problem_or_url, args.url)
         return
 
-    if args.problem_or_url.startswith(("http://", "https://")):
-        if args.url is not None:
-            parser.error("when first arg is a URL, do not pass a second URL")
-        url = args.problem_or_url
-        try:
-            problem = derive_problem_name(args.platform, url)
-        except ValueError as e:
-            parser.error(str(e))
-    else:
-        problem = args.problem_or_url
-        url = args.url
+    if not args.problem_or_url.startswith(("http://", "https://")):
+        parser.error("expected a full URL (e.g. https://leetcode.com/problems/two-sum/)")
+
+    url = args.problem_or_url
+    if args.url is not None:
+        parser.error("when first arg is a URL, do not pass a second URL")
+    try:
+        problem = derive_problem_name(args.platform, url)
+    except ValueError as e:
+        parser.error(str(e))
 
     scaffold(args.platform, problem, url)
 

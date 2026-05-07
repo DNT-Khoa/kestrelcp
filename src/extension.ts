@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { ProblemsTreeProvider, Item, NewBadgeDecorationProvider } from "./tree";
+import { ProblemsTreeProvider, Item } from "./tree";
 import { runInTerminal } from "./runner";
 
 let extensionRoot: string;
@@ -10,15 +10,11 @@ export function activate(context: vscode.ExtensionContext) {
   extensionRoot = context.extensionPath;
 
   const provider = new ProblemsTreeProvider(platforms);
-  const decorator = new NewBadgeDecorationProvider();
-
-  // --- new-problem tracking ---
   const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
+  // Track known problems to detect newly added ones
   const knownProblems = new Set<string>(
     context.workspaceState.get<string[]>("knownProblems", []),
-  );
-  const newProblems = new Set<string>(
-    context.workspaceState.get<string[]>("newProblems", []),
   );
   let initialized = context.workspaceState.get<boolean>(
     "problemTrackingInit",
@@ -33,7 +29,11 @@ export function activate(context: vscode.ExtensionContext) {
       if (!fs.existsSync(dir)) continue;
       try {
         for (const d of fs.readdirSync(dir)) {
-          if (fs.statSync(path.join(dir, d)).isDirectory()) {
+          const problemDir = path.join(dir, d);
+          if (
+            fs.statSync(problemDir).isDirectory() &&
+            fs.existsSync(path.join(problemDir, "Solution.java"))
+          ) {
             result.add(`${p}/${d}`);
           }
         }
@@ -42,8 +42,9 @@ export function activate(context: vscode.ExtensionContext) {
     return result;
   }
 
-  function syncNewProblems() {
+  function syncProblems(): string[] {
     const current = scanProblems();
+    const justAdded: string[] = [];
     if (!initialized) {
       for (const p of current) knownProblems.add(p);
       initialized = true;
@@ -52,26 +53,22 @@ export function activate(context: vscode.ExtensionContext) {
       for (const p of current) {
         if (!knownProblems.has(p)) {
           knownProblems.add(p);
-          newProblems.add(p);
+          justAdded.push(p);
         }
       }
     }
     for (const p of [...knownProblems]) {
       if (!current.has(p)) {
         knownProblems.delete(p);
-        newProblems.delete(p);
       }
     }
     context.workspaceState.update("knownProblems", [...knownProblems]);
-    context.workspaceState.update("newProblems", [...newProblems]);
-    decorator.update(newProblems);
+    return justAdded;
   }
 
-  syncNewProblems();
+  syncProblems();
 
   context.subscriptions.push(
-    vscode.window.registerFileDecorationProvider(decorator),
-    vscode.window.registerTreeDataProvider("kestrelcp.problems", provider),
     vscode.commands.registerCommand("kestrelcp.init", () =>
       initWorkspace(provider),
     ),
@@ -94,48 +91,79 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("kestrelcp.refreshProblems", () =>
       provider.refresh(),
     ),
-    vscode.commands.registerCommand(
-      "kestrelcp.openProblem",
-      (platform: string, problem: string, fileUri: vscode.Uri) => {
-        newProblems.delete(`${platform}/${problem}`);
-        context.workspaceState.update("newProblems", [...newProblems]);
-        decorator.update(newProblems);
-        provider.refresh();
-        vscode.commands.executeCommand("vscode.open", fileUri);
-      },
-    ),
+  );
+
+  const treeView = vscode.window.createTreeView("kestrelcp.problems", {
+    treeDataProvider: provider,
+  });
+  context.subscriptions.push(treeView);
+
+  function revealActiveProblem() {
+    if (!root || !treeView.visible) return;
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+    const rel = path.relative(root, editor.document.uri.fsPath).split(path.sep);
+    if (rel.length < 3 || !platforms().includes(rel[0])) return;
+    const [platform, problem] = rel;
+    const item = new Item(
+      problem,
+      vscode.TreeItemCollapsibleState.None,
+      "problem",
+      platform,
+      problem,
+    );
+    treeView.reveal(item, { focus: false, select: true });
+  }
+
+  treeView.onDidChangeVisibility((e) => {
+    if (e.visible) revealActiveProblem();
+  });
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(() => {
+      if (treeView.visible) revealActiveProblem();
+    }),
   );
 
   if (root) {
     const watcher =
       vscode.workspace.createFileSystemWatcher("**/*.{java,in,out}");
-    watcher.onDidCreate(() => {
-      syncNewProblems();
-      provider.refresh();
-    });
-    watcher.onDidDelete(() => {
-      syncNewProblems();
-      provider.refresh();
-    });
-    context.subscriptions.push(watcher);
+    const dirWatcher = vscode.workspace.createFileSystemWatcher("**/*/");
 
-    context.subscriptions.push(
-      vscode.window.onDidChangeActiveTextEditor((editor) => {
-        if (!editor) return;
-        const rel = path
-          .relative(root, editor.document.uri.fsPath)
-          .split(path.sep);
-        if (rel.length >= 2 && platforms().includes(rel[0])) {
-          const key = `${rel[0]}/${rel[1]}`;
-          if (newProblems.has(key)) {
-            newProblems.delete(key);
-            context.workspaceState.update("newProblems", [...newProblems]);
-            decorator.update(newProblems);
-            provider.refresh();
-          }
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+    const debouncedSync = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const added = syncProblems();
+        provider.refresh();
+        if (added.length > 0) {
+          const key = added[added.length - 1];
+          const [platform, problem] = key.split("/");
+          const item = new Item(
+            problem,
+            vscode.TreeItemCollapsibleState.None,
+            "problem",
+            platform,
+            problem,
+          );
+          const sol = path.join(root, platform, problem, "Solution.java");
+          setTimeout(() => {
+            if (treeView.visible) {
+              treeView.reveal(item, { focus: false, select: true });
+            }
+            vscode.commands.executeCommand(
+              "vscode.open",
+              vscode.Uri.file(sol),
+            );
+          }, 200);
         }
-      }),
-    );
+      }, 500);
+    };
+
+    watcher.onDidCreate(debouncedSync);
+    watcher.onDidDelete(debouncedSync);
+    dirWatcher.onDidCreate(debouncedSync);
+    dirWatcher.onDidDelete(debouncedSync);
+    context.subscriptions.push(watcher, dirWatcher);
   }
 }
 
@@ -145,6 +173,21 @@ function workspaceRoot(): string | undefined {
   const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!root) {
     vscode.window.showErrorMessage("KestrelCP: open a folder first.");
+  }
+  return root;
+}
+
+function requireInit(): string | undefined {
+  const root = workspaceRoot();
+  if (!root) return undefined;
+  const initialized = platforms().some((p) =>
+    fs.existsSync(path.join(root, p)),
+  );
+  if (!initialized) {
+    vscode.window.showErrorMessage(
+      'KestrelCP: run "Initialize Workspace" first.',
+    );
+    return undefined;
   }
   return root;
 }
@@ -193,14 +236,14 @@ async function initWorkspace(provider: ProblemsTreeProvider) {
 }
 
 async function runPlayground() {
-  const root = workspaceRoot();
+  const root = requireInit();
   if (!root) return;
   ensurePlayground(root);
   await runInTerminal("( cd playground && javac *.java && java Playground )");
 }
 
 async function newProblem(provider: ProblemsTreeProvider) {
-  const root = workspaceRoot();
+  const root = requireInit();
   if (!root) return;
 
   const platform = await vscode.window.showQuickPick(platforms(), {
@@ -208,20 +251,24 @@ async function newProblem(provider: ProblemsTreeProvider) {
   });
   if (!platform) return;
 
-  const slugOrUrl = await vscode.window.showInputBox({
-    prompt: "Problem URL or slug",
-    placeHolder: "https://leetcode.com/problems/two-sum/   or   oddecho",
+  const url = await vscode.window.showInputBox({
+    prompt: "Problem URL",
+    placeHolder: "https://leetcode.com/problems/two-sum/",
+    validateInput: (v) =>
+      v.startsWith("http://") || v.startsWith("https://")
+        ? undefined
+        : "Please enter a full URL",
   });
-  if (!slugOrUrl) return;
+  if (!url) return;
 
   await runInTerminal(
-    `${bundledScript("new.py")} ${shellQuote(platform)} ${shellQuote(slugOrUrl)}`,
+    `${bundledScript("new.py")} ${shellQuote(platform)} ${shellQuote(url)}`,
   );
 }
 
 async function runTests(item?: Item) {
   if (item?.contextValue !== "problem") return;
-  const root = workspaceRoot();
+  const root = requireInit();
   if (!root) return;
   await runInTerminal(
     `${bundledScript("test.py")} ${shellQuote(item.platform)} ${shellQuote(item.problem!)}`,
@@ -229,7 +276,7 @@ async function runTests(item?: Item) {
 }
 
 async function refetchAllTests() {
-  const root = workspaceRoot();
+  const root = requireInit();
   if (!root) return;
 
   const counts: Record<string, number> = {};
@@ -284,7 +331,7 @@ async function refetchAllTests() {
 
 async function runTestsForCurrent() {
   const editor = vscode.window.activeTextEditor;
-  const root = workspaceRoot();
+  const root = requireInit();
   if (!root) return;
   if (!editor) {
     vscode.window.showErrorMessage("No active editor.");
@@ -303,7 +350,7 @@ async function runTestsForCurrent() {
 }
 
 async function aiCommit() {
-  const root = workspaceRoot();
+  const root = requireInit();
   if (!root) return;
   await runInTerminal(bundledScript("commit.py"));
 }

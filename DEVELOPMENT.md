@@ -67,6 +67,7 @@ Use this checklist after any code change to verify everything still works end-to
      📁 codeforces
      📁 leetcode
      ```
+   - Try running **New Problem** _before_ Initialize Workspace (in a fresh folder) — should show an error: `KestrelCP: run "Initialize Workspace" first.`
 
 4. **Test the playground**
 
@@ -79,10 +80,15 @@ Use this checklist after any code change to verify everything still works end-to
    | Cmd+Shift+P → **KestrelCP: Run Playground**                                   | Same as the ▶ button                                                                                                             |
 
 5. **Test problem flows** (regression check)
-   - **KestrelCP: New Problem** → pick a platform, paste a URL or slug → folder + sample tests scaffolded.
-   - Click a problem in the sidebar → `Solution.java` opens.
+   - **KestrelCP: New Problem** → pick a platform, paste a URL → folder + sample tests scaffolded.
+   - After scaffolding completes, the new problem should be auto-focused in the tree and `Solution.java` should open in the editor.
+   - Delete a problem's `Solution.java` via the file explorer → problem disappears from tree automatically.
+   - Delete an entire problem folder → problem disappears from tree automatically.
+   - Re-add the same problem via **New Problem** with the same URL → problem reappears, auto-focused, `Solution.java` opens.
    - Hover the problem → click ▶ → tests run.
    - **KestrelCP: Run Tests for Current File** with `Solution.java` open → tests run.
+   - Switch between `Solution.java` files in different problems → the tree auto-highlights the matching problem.
+   - Click the cube icon in the activity bar while a `Solution.java` is open → the tree should auto-scroll to and highlight that problem.
 
 6. **Test AI commit** (requires `ANTHROPIC_API_KEY`)
    - Stage some changes in Source Control.

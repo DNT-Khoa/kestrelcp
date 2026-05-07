@@ -247,17 +247,40 @@ Each `registerCommand` call connects a command ID (from `package.json`) to a Typ
 #### FileSystemWatcher
 
 ```typescript
-const watcher = vscode.workspace.createFileSystemWatcher(
-  "**/{Solution,Playground}.java",
-);
-watcher.onDidCreate(() => provider.refresh());
-watcher.onDidDelete(() => provider.refresh());
-context.subscriptions.push(watcher);
+const watcher = vscode.workspace.createFileSystemWatcher("**/*.{java,in,out}");
+const dirWatcher = vscode.workspace.createFileSystemWatcher("**/*/");
 ```
 
-This watches the entire workspace for `Solution.java` or `Playground.java` files being created or deleted. When that happens, the sidebar tree auto-refreshes. This is how `newProblem` triggers a tree update — the Python script creates `Solution.java`, the watcher fires, and the tree updates. No polling, no timers.
+Two watchers monitor the workspace:
+
+- **File watcher** (`**/*.{java,in,out}`) — detects individual file creates/deletes (Solution.java, test files). On create, it calls `syncProblems()` to detect newly added problems and triggers auto-reveal + auto-open. On delete, it refreshes the tree.
+- **Directory watcher** (`**/*/`) — detects folder creates/deletes (e.g. entire problem folder removed via Finder or `rm -rf`). This ensures the tree stays in sync even when directories are removed in bulk, since `createFileSystemWatcher` may not fire individual file events for bulk directory deletions.
 
 **Decision:** Watching for file events is more reliable than using `setTimeout` to guess when the scaffolding script finishes. The terminal command runs asynchronously and there's no API to detect when it completes — the watcher reacts to the actual file creation event instead.
+
+#### New-Problem Tracking & Auto-Reveal
+
+Newly added problems are automatically focused in the tree and their `Solution.java` opened in the editor. The implementation uses `workspaceState` to track which problems have been seen before:
+
+1. **`workspaceState` persistence** — a `knownProblems` set is stored in `context.workspaceState`. A `problemTrackingInit` flag ensures the first activation seeds all existing problems as "known" so they don't trigger auto-open. Only directories containing `Solution.java` are counted — this ensures that deleting and re-adding a problem correctly treats it as new.
+
+2. **`syncProblems()`** — scans `<platform>/<problem>/` directories (requiring `Solution.java` to exist), compares against `knownProblems`, and returns newly added keys. Also cleans up deleted problems. Called on activation and on file watcher events.
+
+3. **Auto-reveal + auto-open** — when the file watcher detects a newly created problem, the watcher callback constructs an `Item` and calls `treeView.reveal(item, { focus: true, select: true })` to expand the platform node and highlight the problem, then opens `Solution.java` in the editor. A short `setTimeout` lets the tree finish refreshing first.
+
+This requires two things from `tree.ts`:
+
+- **`getParent()`** — implemented on `ProblemsTreeProvider` so `reveal()` can walk up the tree hierarchy.
+- **Stable `id`** — set on each `Item` (e.g. `"kattis/oddecho"`) so `reveal()` can match items across tree refreshes.
+
+#### Active Editor Auto-Follow
+
+The tree view automatically highlights the problem matching the current editor's file:
+
+- **`onDidChangeVisibility`** — when the user clicks the KestrelCP activity bar icon (tree becomes visible), `revealActiveProblem()` checks the active editor's file path, determines its `<platform>/<problem>` from the relative path, and calls `treeView.reveal()` to scroll to and select that problem.
+- **`onDidChangeActiveTextEditor`** — when the user switches editor tabs while the tree is already visible, the tree follows along and highlights the corresponding problem.
+
+Both use `{ focus: false, select: true }` to highlight without stealing keyboard focus from the editor.
 
 #### Shell Quoting (Security)
 
@@ -284,14 +307,16 @@ Even the Python interpreter path and script path are quoted — the extension in
 
 #### Key Command Implementations
 
-**`initWorkspace`** — Creates platform directories and the playground scaffold. Uses synchronous `fs` calls (`mkdirSync`, `writeFileSync`) which is acceptable here because the operation is fast (creating a few empty directories) and runs in the Extension Host process, not the UI thread.
+**`initWorkspace`** — Creates platform directories and the playground scaffold. This is the only command (besides `refreshProblems`) that does not go through `requireInit()`, since it _is_ the initialization step. Uses synchronous `fs` calls (`mkdirSync`, `writeFileSync`) which is acceptable here because the operation is fast (creating a few empty directories) and runs in the Extension Host process, not the UI thread.
 
-**`newProblem`** — Uses VS Code's built-in UI primitives:
+**`newProblem`** — First calls `requireInit()`, which checks that at least one platform directory exists (i.e. the workspace has been initialized). If not, shows an error message asking the user to run "Initialize Workspace" first. Then uses VS Code's built-in UI primitives:
 
 - `showQuickPick()` — dropdown selection for platform
-- `showInputBox()` — text input for URL/slug
+- `showInputBox()` — text input for URL (validated to require a full URL)
 
 Then dispatches to the Python script via the terminal. The FileSystemWatcher handles the tree refresh.
+
+**Note:** All commands except `initWorkspace` and `refreshProblems` use `requireInit()` to ensure the workspace is initialized before proceeding.
 
 **`runTests`** — Receives a tree `Item` (the clicked problem), extracts `platform` and `problem` from it, and runs `test.py` in the terminal.
 
@@ -323,14 +348,14 @@ VS Code calls `getChildren(undefined)` to get root-level items. When the user ex
 #### The Tree Structure
 
 ```
-Playground          ← contextValue: "playground", collapsible: None
-kattis              ← contextValue: "platform", collapsible: Collapsed
-  oddecho           ← contextValue: "problem", collapsible: None
-  helloworld        ← contextValue: "problem", collapsible: None
-codeforces          ← contextValue: "platform", collapsible: Collapsed
-  645A              ← contextValue: "problem", collapsible: None
-leetcode            ← contextValue: "platform", collapsible: Collapsed
-  two-sum           ← contextValue: "problem", collapsible: None
+Playground          ← contextValue: "playground", collapsible: None, icon: beaker
+kattis              ← contextValue: "platform", collapsible: Collapsed, icon: folder
+  oddecho           ← contextValue: "problem", collapsible: None, no icon
+  helloworld        ← contextValue: "problem", collapsible: None, no icon
+codeforces          ← contextValue: "platform", collapsible: Collapsed, icon: folder
+  645A              ← contextValue: "problem", collapsible: None, no icon
+leetcode            ← contextValue: "platform", collapsible: Collapsed, icon: folder
+  two-sum           ← contextValue: "problem", collapsible: None, no icon
 ```
 
 **Root level** (`element` is undefined):
@@ -369,6 +394,8 @@ refresh(): void {
 ```
 
 VS Code's tree view listens to the `onDidChangeTreeData` event. When `refresh()` fires it (with no argument = refresh everything), VS Code re-calls `getChildren()` from the root. This is the standard pattern for refreshable tree views.
+
+**Note:** The tree is registered using `vscode.window.createTreeView()` (not `registerTreeDataProvider`) because the returned `TreeView` object exposes `reveal()`, which is needed for auto-scrolling to newly added problems.
 
 #### Dependency Injection
 
@@ -460,7 +487,7 @@ Each platform has a different HTML/API structure:
 def derive_problem_name(platform: str, url: str) -> str:
 ```
 
-When the user provides a URL instead of a slug, the script extracts a folder-safe problem name from it:
+The script extracts a folder-safe problem name from the URL:
 
 - Kattis/LeetCode: `/problems/oddecho` → `oddecho`
 - Codeforces: `/problemset/problem/645/A` → `645A`
@@ -469,7 +496,7 @@ When the user provides a URL instead of a slug, the script extracts a folder-saf
 
 The script supports two modes via `argparse`:
 
-- `./new.py <platform> <url-or-slug> [url]` — scaffold mode (default)
+- `./new.py <platform> <url>` — scaffold mode (default)
 - `./new.py --refetch <platform> <problem>` — refetch mode
 
 The `--refetch` flag switches the behavior entirely: instead of creating new directories, it re-scrapes an existing problem. The `argcomplete` integration (optional) provides tab completion in shells that support it.
@@ -553,7 +580,7 @@ Features:
 
 Every user-controlled value that reaches the terminal goes through `shellQuote()`:
 
-- Problem URLs/slugs from `showInputBox()`
+- Problem URLs from `showInputBox()`
 - Platform names from `showQuickPick()` (technically safe since these come from a fixed list, but quoted anyway for defense in depth)
 - File path segments from `path.relative()`
 - Python interpreter path from settings
@@ -640,7 +667,7 @@ User clicks + → showQuickPick("Platform") → showInputBox("URL")
      ↓
 extension.ts: newProblem()
      ↓
-shellQuote(platform) + shellQuote(slugOrUrl) → terminal command
+shellQuote(platform) + shellQuote(url) → terminal command
      ↓
 runner.ts: runInTerminal() → sends to KestrelCP terminal
      ↓
@@ -654,7 +681,13 @@ new.py: fetch_codeforces() → scrapes sample tests → writes 1.in, 1.out
      ↓
 FileSystemWatcher detects Solution.java creation
      ↓
+extension.ts: syncProblems() → detects new problem
+     ↓
 tree.ts: refresh() → getChildren() re-reads filesystem → sidebar updates
+     ↓
+treeView.reveal() → auto-expands platform node, focuses new problem
+     ↓
+vscode.open → Solution.java opens in editor
 ```
 
 ### Flow: User Runs Tests

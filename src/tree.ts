@@ -81,12 +81,15 @@ export class ProblemsTreeProvider implements vscode.TreeDataProvider<Item> {
             element.platform,
             d,
           );
+          item.resourceUri = vscode.Uri.parse(
+            `kestrelcp-problem:/${element.platform}/${d}`,
+          );
           const sol = path.join(dir, d, "Solution.java");
           if (fs.existsSync(sol)) {
             item.command = {
-              command: "vscode.open",
+              command: "kestrelcp.openProblem",
               title: "Open Solution",
-              arguments: [vscode.Uri.file(sol)],
+              arguments: [element.platform, d, vscode.Uri.file(sol)],
             };
           }
           return item;
@@ -115,5 +118,35 @@ export class Item extends vscode.TreeItem {
         : contextValue === "playground"
           ? new vscode.ThemeIcon("beaker")
           : new vscode.ThemeIcon("file-code");
+  }
+}
+
+export class NewBadgeDecorationProvider
+  implements vscode.FileDecorationProvider
+{
+  private _onDidChange = new vscode.EventEmitter<
+    vscode.Uri | vscode.Uri[] | undefined
+  >();
+  readonly onDidChangeFileDecorations = this._onDidChange.event;
+
+  private _newProblems = new Set<string>();
+
+  update(newProblems: Set<string>): void {
+    this._newProblems = new Set(newProblems);
+    this._onDidChange.fire(undefined);
+  }
+
+  provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
+    if (uri.scheme !== "kestrelcp-problem") return undefined;
+    const key = uri.path.slice(1); // remove leading /
+    if (this._newProblems.has(key)) {
+      return {
+        badge: "●",
+        tooltip: "New problem",
+        color: new vscode.ThemeColor("charts.blue"),
+        propagate: false,
+      };
+    }
+    return undefined;
   }
 }

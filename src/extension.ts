@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { ProblemsTreeProvider, Item } from "./tree";
+import { ProblemsTreeProvider, Item, NewBadgeDecorationProvider } from "./tree";
 import { runInTerminal } from "./runner";
 
 let extensionRoot: string;
@@ -10,7 +10,67 @@ export function activate(context: vscode.ExtensionContext) {
   extensionRoot = context.extensionPath;
 
   const provider = new ProblemsTreeProvider(platforms);
+  const decorator = new NewBadgeDecorationProvider();
+
+  // --- new-problem tracking ---
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const knownProblems = new Set<string>(
+    context.workspaceState.get<string[]>("knownProblems", []),
+  );
+  const newProblems = new Set<string>(
+    context.workspaceState.get<string[]>("newProblems", []),
+  );
+  let initialized = context.workspaceState.get<boolean>(
+    "problemTrackingInit",
+    false,
+  );
+
+  function scanProblems(): Set<string> {
+    const result = new Set<string>();
+    if (!root) return result;
+    for (const p of platforms()) {
+      const dir = path.join(root, p);
+      if (!fs.existsSync(dir)) continue;
+      try {
+        for (const d of fs.readdirSync(dir)) {
+          if (fs.statSync(path.join(dir, d)).isDirectory()) {
+            result.add(`${p}/${d}`);
+          }
+        }
+      } catch {}
+    }
+    return result;
+  }
+
+  function syncNewProblems() {
+    const current = scanProblems();
+    if (!initialized) {
+      for (const p of current) knownProblems.add(p);
+      initialized = true;
+      context.workspaceState.update("problemTrackingInit", true);
+    } else {
+      for (const p of current) {
+        if (!knownProblems.has(p)) {
+          knownProblems.add(p);
+          newProblems.add(p);
+        }
+      }
+    }
+    for (const p of [...knownProblems]) {
+      if (!current.has(p)) {
+        knownProblems.delete(p);
+        newProblems.delete(p);
+      }
+    }
+    context.workspaceState.update("knownProblems", [...knownProblems]);
+    context.workspaceState.update("newProblems", [...newProblems]);
+    decorator.update(newProblems);
+  }
+
+  syncNewProblems();
+
   context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider(decorator),
     vscode.window.registerTreeDataProvider("kestrelcp.problems", provider),
     vscode.commands.registerCommand("kestrelcp.init", () =>
       initWorkspace(provider),
@@ -34,14 +94,48 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("kestrelcp.refreshProblems", () =>
       provider.refresh(),
     ),
+    vscode.commands.registerCommand(
+      "kestrelcp.openProblem",
+      (platform: string, problem: string, fileUri: vscode.Uri) => {
+        newProblems.delete(`${platform}/${problem}`);
+        context.workspaceState.update("newProblems", [...newProblems]);
+        decorator.update(newProblems);
+        provider.refresh();
+        vscode.commands.executeCommand("vscode.open", fileUri);
+      },
+    ),
   );
 
-  if (vscode.workspace.workspaceFolders?.[0]) {
+  if (root) {
     const watcher =
       vscode.workspace.createFileSystemWatcher("**/*.{java,in,out}");
-    watcher.onDidCreate(() => provider.refresh());
-    watcher.onDidDelete(() => provider.refresh());
+    watcher.onDidCreate(() => {
+      syncNewProblems();
+      provider.refresh();
+    });
+    watcher.onDidDelete(() => {
+      syncNewProblems();
+      provider.refresh();
+    });
     context.subscriptions.push(watcher);
+
+    context.subscriptions.push(
+      vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (!editor) return;
+        const rel = path
+          .relative(root, editor.document.uri.fsPath)
+          .split(path.sep);
+        if (rel.length >= 2 && platforms().includes(rel[0])) {
+          const key = `${rel[0]}/${rel[1]}`;
+          if (newProblems.has(key)) {
+            newProblems.delete(key);
+            context.workspaceState.update("newProblems", [...newProblems]);
+            decorator.update(newProblems);
+            provider.refresh();
+          }
+        }
+      }),
+    );
   }
 }
 

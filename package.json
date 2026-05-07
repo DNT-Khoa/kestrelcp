@@ -2,7 +2,7 @@
   "name": "kestrelcp",
   "displayName": "KestrelCP",
   "description": "Scaffold, test, and commit competitive programming solutions for Kattis, Codeforces, and LeetCode.",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "publisher": "khoa-doan",
   "author": {
     "name": "Khoa Doan"

@@ -14,6 +14,10 @@ import argparse
 import os
 import re
 import sys
+import time
+
+HTTP_TIMEOUT_SECONDS = 25
+TRANSIENT_EXC_NAMES = {"Timeout", "ReadTimeout", "ConnectTimeout", "ConnectionError"}
 
 try:
     import argcomplete
@@ -132,7 +136,7 @@ def fetch_leetcode(url: str) -> tuple[list[tuple[str, str]], str]:
         "https://leetcode.com/graphql/",
         json={"query": query, "variables": {"titleSlug": slug}, "operationName": "questionData"},
         headers={**HEADERS, "Content-Type": "application/json", "Referer": url},
-        timeout=10,
+        timeout=HTTP_TIMEOUT_SECONDS,
     )
     r.raise_for_status()
     question = (r.json().get("data") or {}).get("question")
@@ -153,12 +157,32 @@ def fetch_leetcode(url: str) -> tuple[list[tuple[str, str]], str]:
     content_html = question.get("content") or ""
     soup = BeautifulSoup(content_html, "html.parser")
 
-    outputs = []
-    for pre in soup.select("pre"):
-        t = pre.get_text("\n")
-        mo = re.search(r"Output:\s*(.+?)(?:\n\s*Explanation|\Z)", t, re.DOTALL)
-        if mo:
-            outputs.append(mo.group(1).strip())
+    outputs: list[str] = []
+
+    # New LeetCode HTML format (2024+): <div class="example-block"> wraps
+    # each example with <p><strong>Output:</strong> <span class="example-io">...</span></p>
+    for block in soup.select("div.example-block"):
+        for p in block.find_all("p"):
+            strong = p.find("strong")
+            if not strong or "Output" not in strong.get_text():
+                continue
+            span = p.find("span", class_="example-io")
+            if span:
+                outputs.append(span.get_text("\n").strip())
+            else:
+                txt = p.get_text(" ", strip=True)
+                mo = re.match(r"^Output:\s*(.+)$", txt)
+                if mo:
+                    outputs.append(mo.group(1).strip())
+            break
+
+    # Legacy format: <pre>Input: ...\nOutput: ...\nExplanation: ...</pre>
+    if not outputs:
+        for pre in soup.select("pre"):
+            t = pre.get_text("\n")
+            mo = re.search(r"Output:\s*(.+?)(?:\n\s*Explanation|\Z)", t, re.DOTALL)
+            if mo:
+                outputs.append(mo.group(1).strip())
 
     samples = list(zip(inputs, outputs))
 
@@ -258,19 +282,29 @@ def scaffold(platform: str, problem: str, url: str) -> None:
 
 
 def fetch_page(platform: str, url: str) -> tuple[list[tuple[str, str]], str]:
-    try:
-        if platform == "kattis":
-            return fetch_kattis(url)
-        elif platform == "codeforces":
-            return fetch_codeforces(url)
-        elif platform == "leetcode":
-            return fetch_leetcode(url)
-        else:
-            print(f"Note: auto-fetch not supported for '{platform}', skipping.")
-            return [], ""
-    except Exception as e:
-        print(f"Warning: could not fetch page ({e})")
+    fetchers = {
+        "kattis": fetch_kattis,
+        "codeforces": fetch_codeforces,
+        "leetcode": fetch_leetcode,
+    }
+    fn = fetchers.get(platform)
+    if fn is None:
+        print(f"Note: auto-fetch not supported for '{platform}', skipping.")
         return [], ""
+
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            return fn(url)
+        except Exception as e:
+            last_exc = e
+            if type(e).__name__ not in TRANSIENT_EXC_NAMES or attempt == 2:
+                break
+            wait = 2 * (attempt + 1)
+            print(f"Warning: fetch attempt {attempt + 1} failed ({e}); retrying in {wait}s...")
+            time.sleep(wait)
+    print(f"Warning: could not fetch page ({last_exc})")
+    return [], ""
 
 
 def _touch_empty_tests(problem_dir: str) -> None:

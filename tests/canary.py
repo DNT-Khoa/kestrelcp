@@ -28,7 +28,11 @@ import time
 CANARIES: list[tuple[str, str, int]] = [
     ("kattis", "https://open.kattis.com/problems/oddecho", 1),
     ("codeforces", "https://codeforces.com/problemset/problem/645/A", 4),
-    ("leetcode", "two-sum", 2),
+    # two-sum uses LeetCode's legacy <pre> example format; contains-duplicate
+    # uses the newer <div class="example-block"> format — keep both so a
+    # one-sided parser regression is caught.
+    ("leetcode", "https://leetcode.com/problems/two-sum/", 2),
+    ("leetcode", "https://leetcode.com/problems/contains-duplicate/", 1),
 ]
 
 MAX_ATTEMPTS = 3
@@ -37,6 +41,13 @@ RETRY_SLEEP_SECONDS = 10
 
 def run_canary(workspace: str, platform: str, target: str, min_input_lines: int) -> list[str]:
     """Returns list of failure messages (empty list = pass)."""
+    platform_dir = os.path.join(workspace, platform)
+    pre_existing = (
+        {d for d in os.listdir(platform_dir) if os.path.isdir(os.path.join(platform_dir, d))}
+        if os.path.isdir(platform_dir)
+        else set()
+    )
+
     last_stderr = ""
     for attempt in range(1, MAX_ATTEMPTS + 1):
         result = subprocess.run(
@@ -61,18 +72,17 @@ def run_canary(workspace: str, platform: str, target: str, min_input_lines: int)
             f"Last error: {last_stderr or '<empty>'}"
         ]
 
-    platform_dir = os.path.join(workspace, platform)
     if not os.path.isdir(platform_dir):
         return [f"{platform}: no `{platform}/` directory created"]
 
-    problem_dirs = sorted(
+    new_dirs = sorted(
         d for d in os.listdir(platform_dir)
-        if os.path.isdir(os.path.join(platform_dir, d))
+        if d not in pre_existing and os.path.isdir(os.path.join(platform_dir, d))
     )
-    if not problem_dirs:
-        return [f"{platform}: no problem subdirectory created"]
+    if not new_dirs:
+        return [f"{platform}: no new problem subdirectory created for {target}"]
 
-    problem_path = os.path.join(platform_dir, problem_dirs[0])
+    problem_path = os.path.join(platform_dir, new_dirs[0])
     failures: list[str] = []
 
     for fname in ("1.in", "1.out"):

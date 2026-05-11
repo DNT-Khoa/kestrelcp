@@ -60,7 +60,7 @@ def fetch_kattis(url: str) -> tuple[list[tuple[str, str]], str]:
     import requests
     from bs4 import BeautifulSoup
 
-    r = requests.get(url, headers=HEADERS, timeout=10)
+    r = requests.get(url, headers=HEADERS, timeout=HTTP_TIMEOUT_SECONDS)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
 
@@ -203,7 +203,7 @@ def fetch_codeforces(url: str) -> tuple[list[tuple[str, str]], str]:
     import requests
     from bs4 import BeautifulSoup
 
-    r = requests.get(url, headers=HEADERS, timeout=10)
+    r = requests.get(url, headers=HEADERS, timeout=HTTP_TIMEOUT_SECONDS)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
 

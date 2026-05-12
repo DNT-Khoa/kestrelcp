@@ -267,12 +267,8 @@ def scaffold(platform: str, problem: str, url: str) -> None:
     # Write sample tests
     if samples:
         for i, (inp, out) in enumerate(samples, start=1):
-            in_path = os.path.join(problem_dir, f"{i}.in")
-            out_path = os.path.join(problem_dir, f"{i}.out")
-            with open(in_path, "w") as f:
-                f.write(inp if inp.endswith("\n") else inp + "\n")
-            with open(out_path, "w") as f:
-                f.write(out if out.endswith("\n") else out + "\n")
+            _write_sample(os.path.join(problem_dir, f"{i}.in"), inp)
+            _write_sample(os.path.join(problem_dir, f"{i}.out"), out)
         print(f"Fetched {len(samples)} sample test(s) from {url}")
     else:
         print(f"Warning: no sample tests found at {url}")
@@ -311,6 +307,14 @@ def _touch_empty_tests(problem_dir: str) -> None:
     open(os.path.join(problem_dir, "1.in"), "w").close()
     open(os.path.join(problem_dir, "1.out"), "w").close()
     print("Created empty 1.in / 1.out — paste sample tests manually")
+
+
+def _write_sample(path: str, text: str) -> None:
+    text = text.lstrip("\n")
+    if not text.endswith("\n"):
+        text += "\n"
+    with open(path, "w") as f:
+        f.write(text)
 
 
 def _read_url_from_notes(problem_dir: str) -> str | None:
@@ -357,12 +361,8 @@ def refetch_samples(platform: str, problem: str, url: str | None = None) -> None
             os.remove(os.path.join(problem_dir, f))
 
     for i, (inp, out) in enumerate(samples, start=1):
-        in_path = os.path.join(problem_dir, f"{i}.in")
-        out_path = os.path.join(problem_dir, f"{i}.out")
-        with open(in_path, "w") as fh:
-            fh.write(inp if inp.endswith("\n") else inp + "\n")
-        with open(out_path, "w") as fh:
-            fh.write(out if out.endswith("\n") else out + "\n")
+        _write_sample(os.path.join(problem_dir, f"{i}.in"), inp)
+        _write_sample(os.path.join(problem_dir, f"{i}.out"), out)
 
     print(f"Refetched {len(samples)} sample test(s) from {url}")
 

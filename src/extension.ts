@@ -193,7 +193,7 @@ function requireInit(): string | undefined {
 }
 
 function platforms(): string[] {
-  return ["kattis", "codeforces", "leetcode"];
+  return ["kattis", "codeforces"];
 }
 
 function shellQuote(s: string): string {
@@ -253,7 +253,7 @@ async function newProblem(provider: ProblemsTreeProvider) {
 
   const url = await vscode.window.showInputBox({
     prompt: "Problem URL",
-    placeHolder: "https://leetcode.com/problems/two-sum/",
+    placeHolder: "https://open.kattis.com/problems/oddecho",
     validateInput: (v) =>
       v.startsWith("http://") || v.startsWith("https://")
         ? undefined

@@ -28,11 +28,6 @@ import time
 CANARIES: list[tuple[str, str, int]] = [
     ("kattis", "https://open.kattis.com/problems/oddecho", 1),
     ("codeforces", "https://codeforces.com/problemset/problem/645/A", 4),
-    # two-sum uses LeetCode's legacy <pre> example format; contains-duplicate
-    # uses the newer <div class="example-block"> format — keep both so a
-    # one-sided parser regression is caught.
-    ("leetcode", "https://leetcode.com/problems/two-sum/", 2),
-    ("leetcode", "https://leetcode.com/problems/contains-duplicate/", 1),
 ]
 
 MAX_ATTEMPTS = 3

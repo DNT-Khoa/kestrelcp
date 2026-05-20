@@ -354,8 +354,6 @@ kattis              ← contextValue: "platform", collapsible: Collapsed, icon: 
   helloworld        ← contextValue: "problem", collapsible: None, no icon
 codeforces          ← contextValue: "platform", collapsible: Collapsed, icon: folder
   645A              ← contextValue: "problem", collapsible: None, no icon
-leetcode            ← contextValue: "platform", collapsible: Collapsed, icon: folder
-  two-sum           ← contextValue: "problem", collapsible: None, no icon
 ```
 
 **Root level** (`element` is undefined):
@@ -477,7 +475,6 @@ Each platform has a different HTML/API structure:
 
 - **Kattis** — standard HTML scraping. Samples are in `table.sample > pre` elements.
 - **Codeforces** — HTML scraping. Samples are in `div.input pre` and `div.output pre`.
-- **LeetCode** — uses LeetCode's GraphQL API (not HTML scraping). The `exampleTestcases` field provides inputs; outputs are parsed from `<pre>` blocks in the rendered `content` HTML. The script also reads `metaData` to know how many parameters per test case (needed to group multi-line inputs correctly).
 
 **Decision:** HTML scraping is inherently fragile — if the site changes its markup, the scraper breaks. This is why the canary CI test exists (see section 6). The scrapers use `requests` with browser-like headers to avoid being blocked.
 
@@ -489,7 +486,7 @@ def derive_problem_name(platform: str, url: str) -> str:
 
 The script extracts a folder-safe problem name from the URL:
 
-- Kattis/LeetCode: `/problems/oddecho` → `oddecho`
+- Kattis: `/problems/oddecho` → `oddecho`
 - Codeforces: `/problemset/problem/645/A` → `645A`
 
 #### Argument Parsing

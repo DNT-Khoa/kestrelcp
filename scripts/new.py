@@ -7,7 +7,6 @@ Usage:
 Examples:
   ./new.py kattis https://open.kattis.com/problems/oddecho
   ./new.py codeforces https://codeforces.com/problemset/problem/1/A
-  ./new.py leetcode https://leetcode.com/problems/two-sum/
 """
 
 import argparse
@@ -103,7 +102,7 @@ def fetch_kattis(url: str) -> tuple[list[tuple[str, str]], str]:
 
 def derive_problem_name(platform: str, url: str) -> str:
     """Extract a folder-safe problem name from a problem URL."""
-    if platform in ("kattis", "leetcode"):
+    if platform == "kattis":
         m = re.search(r"/problems/([^/?#]+)", url)
         if m:
             return m.group(1)
@@ -112,98 +111,6 @@ def derive_problem_name(platform: str, url: str) -> str:
         if m:
             return f"{m.group(1)}{m.group(2)}"
     raise ValueError(f"could not derive problem name from URL: {url}")
-
-
-def fetch_leetcode(url: str) -> tuple[list[tuple[str, str]], str]:
-    """Returns (samples, description_md) from a LeetCode problem page.
-
-    Uses the LeetCode public GraphQL endpoint. The exampleTestcases field is
-    newline-separated, one value per parameter, grouped by params count from
-    metaData to form each .in file. Outputs are parsed from <pre> blocks
-    in the rendered content HTML.
-    """
-    import json
-    import requests
-    from bs4 import BeautifulSoup
-
-    m = re.search(r"/problems/([^/]+)", url)
-    if not m:
-        raise ValueError(f"could not extract slug from {url}")
-    slug = m.group(1)
-
-    query = """
-    query questionData($titleSlug: String!) {
-      question(titleSlug: $titleSlug) {
-        content
-        exampleTestcases
-        metaData
-      }
-    }
-    """
-    r = requests.post(
-        "https://leetcode.com/graphql/",
-        json={"query": query, "variables": {"titleSlug": slug}, "operationName": "questionData"},
-        headers={**HEADERS, "Content-Type": "application/json", "Referer": url},
-        timeout=HTTP_TIMEOUT_SECONDS,
-    )
-    r.raise_for_status()
-    question = (r.json().get("data") or {}).get("question")
-    if not question:
-        raise ValueError(f"no public problem found for slug '{slug}' (premium?)")
-
-    raw_inputs = question.get("exampleTestcases") or ""
-    meta = json.loads(question.get("metaData") or "{}")
-    n_params = max(1, len(meta.get("params", [])))
-
-    lines = raw_inputs.split("\n") if raw_inputs else []
-    inputs = []
-    for i in range(0, len(lines), n_params):
-        chunk = lines[i:i + n_params]
-        if len(chunk) == n_params:
-            inputs.append("\n".join(chunk))
-
-    content_html = question.get("content") or ""
-    soup = BeautifulSoup(content_html, "html.parser")
-
-    outputs: list[str] = []
-
-    # New LeetCode HTML format (2024+): <div class="example-block"> wraps
-    # each example with <p><strong>Output:</strong> <span class="example-io">...</span></p>
-    for block in soup.select("div.example-block"):
-        for p in block.find_all("p"):
-            strong = p.find("strong")
-            if not strong or "Output" not in strong.get_text():
-                continue
-            span = p.find("span", class_="example-io")
-            if span:
-                outputs.append(span.get_text("\n").strip())
-            else:
-                txt = p.get_text(" ", strip=True)
-                mo = re.match(r"^Output:\s*(.+)$", txt)
-                if mo:
-                    outputs.append(mo.group(1).strip())
-            break
-
-    # Legacy format: <pre>Input: ...\nOutput: ...\nExplanation: ...</pre>
-    if not outputs:
-        for pre in soup.select("pre"):
-            t = pre.get_text("\n")
-            mo = re.search(r"Output:\s*(.+?)(?:\n\s*Explanation|\Z)", t, re.DOTALL)
-            if mo:
-                outputs.append(mo.group(1).strip())
-
-    samples = list(zip(inputs, outputs))
-
-    desc_lines = []
-    for el in soup.find_all(["p", "li"]):
-        if el.find_parent("pre"):
-            continue
-        t = el.get_text(" ", strip=True)
-        if t:
-            desc_lines.append(t if el.name == "p" else f"- {t}")
-    description = "\n\n".join(desc_lines)
-
-    return samples, description
 
 
 def fetch_codeforces(url: str) -> tuple[list[tuple[str, str]], str]:
@@ -289,7 +196,6 @@ def fetch_page(platform: str, url: str) -> tuple[list[tuple[str, str]], str]:
     fetchers = {
         "kattis": fetch_kattis,
         "codeforces": fetch_codeforces,
-        "leetcode": fetch_leetcode,
     }
     fn = fetchers.get(platform)
     if fn is None:
@@ -381,7 +287,7 @@ def main() -> None:
         description="Scaffold a new competitive programming problem.",
         usage="./new.py <platform> <url>",
     )
-    parser.add_argument("platform", choices=["kattis", "codeforces", "leetcode"])
+    parser.add_argument("platform", choices=["kattis", "codeforces"])
     parser.add_argument("problem_or_url", help="full problem URL")
     parser.add_argument("url", nargs="?", help=argparse.SUPPRESS)
     parser.add_argument(
@@ -402,7 +308,7 @@ def main() -> None:
         return
 
     if not args.problem_or_url.startswith(("http://", "https://")):
-        parser.error("expected a full URL (e.g. https://leetcode.com/problems/two-sum/)")
+        parser.error("expected a full URL (e.g. https://open.kattis.com/problems/oddecho)")
 
     url = args.problem_or_url
     if args.url is not None:

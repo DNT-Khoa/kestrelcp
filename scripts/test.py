@@ -19,7 +19,7 @@ except ImportError:
 
 TIMEOUT = 5
 WORKSPACE = os.getcwd()
-PLATFORMS = ["kattis", "codeforces", "leetcode"]
+PLATFORMS = ["kattis", "codeforces"]
 
 
 def problem_completer(prefix, parsed_args, **kwargs):

@@ -22,7 +22,7 @@ import sys
 
 PROMPT_TEMPLATE = """You are writing release notes for a VS Code extension called KestrelCP.
 
-KestrelCP scaffolds, tests, and commits competitive-programming solutions for Kattis, Codeforces, and LeetCode. It bundles three Python scripts (`new.py`, `test.py`, `commit.py`), provides a sidebar tree view, a Java "Playground" scratchpad, a "Refetch All Sample Tests" command, and a scraper canary CI workflow.
+KestrelCP scaffolds, tests, and commits competitive-programming solutions for Kattis and Codeforces. It bundles three Python scripts (`new.py`, `test.py`, `commit.py`), provides a sidebar tree view, a Java "Playground" scratchpad, a "Refetch All Sample Tests" command, and a scraper canary CI workflow.
 
 Generate concise, well-structured release notes for version {version}, based on the commits and changed files below.
 

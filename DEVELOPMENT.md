@@ -28,7 +28,7 @@ kestrelcp/
     ├── workflows/
     │   ├── bump-version.yml      ← manual: bumps package.json + pushes vX.Y.Z tag
     │   ├── release-extension.yml ← tag v* → builds .vsix → makes release
-    │   └── scraper-canary.yml    ← weekly check that Kattis/CF/LC scrapers still work
+    │   └── scraper-canary.yml    ← weekly check that Kattis/CF scrapers still work
     └── scripts/
         └── release_notes.py      ← AI-curated release notes (called by release workflow)
 ```
@@ -45,7 +45,7 @@ npm run compile
 # F5 in VS Code → launches a dev instance with the extension loaded
 ```
 
-In the dev instance: open any folder → **KestrelCP: Initialize Workspace** → creates `kattis/` / `codeforces/` / `leetcode/` / `playground/Playground.java` → ready to test. (The Python scripts run from the extension's install dir, not from the workspace, so there's nothing to copy.)
+In the dev instance: open any folder → **KestrelCP: Initialize Workspace** → creates `kattis/` / `codeforces/` / `playground/Playground.java` → ready to test. (The Python scripts run from the extension's install dir, not from the workspace, so there's nothing to copy.)
 
 ### Manual test plan
 
@@ -65,7 +65,6 @@ Use this checklist after any code change to verify everything still works end-to
      🧪 Playground       ← inline ▶ on hover
      📁 kattis
      📁 codeforces
-     📁 leetcode
      ```
    - Try running **New Problem** _before_ Initialize Workspace (in a fresh folder) — should show an error: `KestrelCP: run "Initialize Workspace" first.`
 
@@ -120,7 +119,7 @@ If `tsc` is clean and F5 still fails, it's a launch-config problem, not a code p
 
 ## 🐦 Scraper canary (CI)
 
-The bundled scrapers (`new.py`) depend on Kattis / Codeforces / LeetCode HTML and GraphQL — these change without notice. The **Scraper Canary** workflow ([`.github/workflows/scraper-canary.yml`](.github/workflows/scraper-canary.yml)) runs weekly (Monday 06:00 UTC) and on-demand to catch breakage early.
+The bundled scrapers (`new.py`) depend on Kattis / Codeforces HTML — these change without notice. The **Scraper Canary** workflow ([`.github/workflows/scraper-canary.yml`](.github/workflows/scraper-canary.yml)) runs weekly (Monday 06:00 UTC) and on-demand to catch breakage early.
 
 It runs [`tests/canary.py`](tests/canary.py), which fetches one stable problem per platform and asserts:
 

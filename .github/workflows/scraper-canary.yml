@@ -58,8 +58,7 @@ jobs:
           ${RUN_URL}
 
           ### Likely causes
-          - One of the target sites (Kattis / Codeforces / LeetCode) changed its HTML or GraphQL response shape.
-          - LeetCode bot-blocking / rate limit (often resolves on retry).
+          - One of the target sites (Kattis / Codeforces) changed its HTML response shape.
           - Transient network issue — re-run the workflow before assuming the scraper is broken.
 
           ### Next steps

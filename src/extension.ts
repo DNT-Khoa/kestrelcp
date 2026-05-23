@@ -193,7 +193,7 @@ function requireInit(): string | undefined {
 }
 
 function platforms(): string[] {
-  return ["kattis", "codeforces"];
+  return ["codeforces", "kattis"];
 }
 
 function shellQuote(s: string): string {

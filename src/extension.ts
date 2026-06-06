@@ -352,5 +352,9 @@ async function runTestsForCurrent() {
 async function aiCommit() {
   const root = requireInit();
   if (!root) return;
-  await runInTerminal(bundledScript("commit.py"));
+  const model =
+    vscode.workspace
+      .getConfiguration("kestrelcp")
+      .get<string>("commitModel") || "claude-haiku-4-5";
+  await runInTerminal(`${bundledScript("commit.py")} ${shellQuote(model)}`);
 }

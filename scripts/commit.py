@@ -37,6 +37,7 @@ def main() -> None:
         sys.exit(1)
 
     client = anthropic.Anthropic()
+    model = sys.argv[1] if len(sys.argv) > 1 else "claude-haiku-4-5"
 
     diff = run(["git", "diff", "--staged"])
     if not diff:
@@ -48,40 +49,53 @@ def main() -> None:
     stop = threading.Event()
     t = threading.Thread(target=_spin, args=(stop,), daemon=True)
     t.start()
-    response = client.messages.create(
-        model="claude-opus-4-7",
-        max_tokens=128,
-        system=[{
-            "type": "text",
-            "text": (
-                "You generate concise git commit messages following the Conventional Commits spec with an emoji prefix.\n"
-                "Format: <emoji> <type>(<optional scope>): <short description>\n"
-                "Emoji map:\n"
-                "  feat     → ✨\n"
-                "  fix      → 🐛\n"
-                "  docs     → 📝\n"
-                "  style    → 💄\n"
-                "  refactor → ♻️\n"
-                "  test     → ✅\n"
-                "  chore    → 🔧\n"
-                "  perf     → ⚡️\n"
-                "  ci       → 👷\n"
-                "  revert   → ⏪️\n"
-                "Rules: one line only, no period, under 72 characters, lowercase type and description.\n"
-                "Output only the commit message — no explanation, no quotes."
-            ),
-            "cache_control": {"type": "ephemeral"},
-        }],
-        messages=[{
-            "role": "user",
-            "content": f"Git status:\n{status}\n\nDiff:\n{diff[:8000]}",
-        }],
-    )
+    try:
+        response = client.messages.create(
+            model=model,
+            max_tokens=128,
+            system=[{
+                "type": "text",
+                "text": (
+                    "You generate concise git commit messages following the Conventional Commits spec with an emoji prefix.\n"
+                    "Format: <emoji> <type>(<optional scope>): <short description>\n"
+                    "Emoji map:\n"
+                    "  feat     → ✨\n"
+                    "  fix      → 🐛\n"
+                    "  docs     → 📝\n"
+                    "  style    → 💄\n"
+                    "  refactor → ♻️\n"
+                    "  test     → ✅\n"
+                    "  chore    → 🔧\n"
+                    "  perf     → ⚡️\n"
+                    "  ci       → 👷\n"
+                    "  revert   → ⏪️\n"
+                    "Rules: one line only, no period, under 72 characters, lowercase type and description.\n"
+                    "Output only the commit message — no explanation, no quotes."
+                ),
+                "cache_control": {"type": "ephemeral"},
+            }],
+            messages=[{
+                "role": "user",
+                "content": f"Git status:\n{status}\n\nDiff:\n{diff[:8000]}",
+            }],
+        )
+    except anthropic.NotFoundError:
+        stop.set()
+        t.join()
+        print(f"Error: model '{model}' not found.", file=sys.stderr)
+        print("Check the `kestrelcp.commitModel` setting. See https://docs.claude.com/en/docs/about-claude/models for valid IDs.", file=sys.stderr)
+        sys.exit(1)
+    except anthropic.APIError as e:
+        stop.set()
+        t.join()
+        print(f"Anthropic API error: {e}", file=sys.stderr)
+        sys.exit(1)
     stop.set()
     t.join()
 
     message = response.content[0].text.strip().strip('"')
-    print(f"\n  {message}\n")
+    print(f"\n  Suggested commit message (from {model}):")
+    print(f"  {message}\n")
 
     confirm = input("Commit with this message? [Y/n/e] ").strip().lower()
     if confirm == "n":

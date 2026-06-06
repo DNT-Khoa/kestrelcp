@@ -131,6 +131,11 @@
           "type": "string",
           "default": "",
           "description": "Anthropic API key for AI commit messages. Leave blank to inherit from the shell environment."
+        },
+        "kestrelcp.commitModel": {
+          "type": "string",
+          "default": "claude-haiku-4-5",
+          "description": "Anthropic model used to generate commit messages (e.g. claude-haiku-4-5, claude-sonnet-4-6, claude-opus-4-8)."
         }
       }
     }

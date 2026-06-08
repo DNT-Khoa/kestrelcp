@@ -1,7 +1,7 @@
 {
   "name": "kestrelcp",
   "displayName": "KestrelCP",
-  "description": "Scaffold, test, and commit competitive programming solutions for Kattis and Codeforces.",
+  "description": "Scaffold, test, submit (LeetCode), and commit competitive programming solutions for Kattis, Codeforces, and LeetCode.",
   "version": "2.1.0",
   "publisher": "khoa-doan",
   "author": {
@@ -20,6 +20,7 @@
     "competitive-programming",
     "kattis",
     "codeforces",
+    "leetcode",
     "java"
   ],
   "categories": [
@@ -38,22 +39,12 @@
       },
       {
         "command": "kestrelcp.newProblem",
-        "title": "KestrelCP: New Problem",
-        "icon": "$(add)"
-      },
-      {
-        "command": "kestrelcp.runTests",
-        "title": "KestrelCP: Run Tests",
-        "icon": "$(play)"
+        "title": "KestrelCP: New Problem"
       },
       {
         "command": "kestrelcp.runTestsForCurrent",
-        "title": "KestrelCP: Run Tests for Current File"
-      },
-      {
-        "command": "kestrelcp.refetchAllTests",
-        "title": "KestrelCP: Refetch All Sample Tests",
-        "icon": "$(cloud-download)"
+        "title": "KestrelCP: Run Tests for Current Problem",
+        "icon": "$(play)"
       },
       {
         "command": "kestrelcp.aiCommit",
@@ -65,9 +56,30 @@
         "icon": "$(play-circle)"
       },
       {
-        "command": "kestrelcp.refreshProblems",
-        "title": "KestrelCP: Refresh Problems",
+        "command": "kestrelcp.searchLeetcode",
+        "title": "KestrelCP: Search LeetCode"
+      },
+      {
+        "command": "kestrelcp.submitLeetcode",
+        "title": "KestrelCP: Submit to LeetCode",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "kestrelcp.setLeetcodeCookies",
+        "title": "KestrelCP: Set LeetCode Cookies"
+      },
+      {
+        "command": "kestrelcp.setAnthropicKey",
+        "title": "KestrelCP: Set Anthropic API Key"
+      },
+      {
+        "command": "kestrelcp.refreshDaily",
+        "title": "KestrelCP: Refresh Daily Challenge",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "kestrelcp.openOrScaffoldDaily",
+        "title": "KestrelCP: Open / Scaffold Today's Daily Challenge"
       }
     ],
     "viewsContainers": {
@@ -82,56 +94,62 @@
     "views": {
       "kestrelcp": [
         {
-          "id": "kestrelcp.problems",
-          "name": "Problems"
+          "id": "kestrelcp.daily",
+          "name": "LeetCode Daily"
         }
       ]
     },
     "menus": {
       "commandPalette": [
         {
-          "command": "kestrelcp.runTests",
+          "command": "kestrelcp.runTestsForCurrent",
+          "when": "kestrelcp.activeIsProblem"
+        },
+        {
+          "command": "kestrelcp.submitLeetcode",
+          "when": "kestrelcp.activeIsLeetcode"
+        },
+        {
+          "command": "kestrelcp.runPlayground",
+          "when": "kestrelcp.activeIsPlayground"
+        },
+        {
+          "command": "kestrelcp.refreshDaily",
           "when": "false"
+        },
+        {
+          "command": "kestrelcp.openOrScaffoldDaily",
+          "when": "false"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "kestrelcp.runTestsForCurrent",
+          "when": "kestrelcp.activeIsProblem",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kestrelcp.submitLeetcode",
+          "when": "kestrelcp.activeIsLeetcode",
+          "group": "navigation@2"
+        },
+        {
+          "command": "kestrelcp.runPlayground",
+          "when": "kestrelcp.activeIsPlayground",
+          "group": "navigation@1"
         }
       ],
       "view/title": [
         {
-          "command": "kestrelcp.newProblem",
-          "when": "view == kestrelcp.problems",
+          "command": "kestrelcp.refreshDaily",
+          "when": "view == kestrelcp.daily",
           "group": "navigation@1"
-        },
-        {
-          "command": "kestrelcp.refreshProblems",
-          "when": "view == kestrelcp.problems",
-          "group": "navigation@2"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "kestrelcp.runTests",
-          "when": "view == kestrelcp.problems && viewItem == problem",
-          "group": "inline"
-        },
-        {
-          "command": "kestrelcp.runPlayground",
-          "when": "view == kestrelcp.problems && viewItem == playground",
-          "group": "inline"
         }
       ]
     },
     "configuration": {
       "title": "KestrelCP",
       "properties": {
-        "kestrelcp.pythonPath": {
-          "type": "string",
-          "default": "python3",
-          "description": "Python 3 interpreter used to run new.py / test.py / commit.py."
-        },
-        "kestrelcp.anthropicApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "Anthropic API key for AI commit messages. Leave blank to inherit from the shell environment."
-        },
         "kestrelcp.commitModel": {
           "type": "string",
           "default": "claude-haiku-4-5",

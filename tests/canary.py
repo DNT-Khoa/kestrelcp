@@ -22,19 +22,24 @@ import sys
 import tempfile
 import time
 
-# (platform, target, min_input_lines) — min_input_lines guards against the
-# silent-collapse failure mode where scraping returns non-empty but joined-on-
-# one-line content (e.g. Codeforces using <br> between sample input rows).
-CANARIES: list[tuple[str, str, int]] = [
-    ("kattis", "https://open.kattis.com/problems/oddecho", 1),
-    ("codeforces", "https://codeforces.com/problemset/problem/645/A", 4),
+# (platform, target, min_input_lines, tolerate_empty_out) — min_input_lines
+# guards against the silent-collapse failure mode where scraping returns
+# non-empty but joined-on-one-line content (e.g. Codeforces using <br> between
+# sample input rows). tolerate_empty_out=True for LeetCode because outputs are
+# best-effort scraped from HTML — the canonical pass/fail comes from the live
+# judge at test time, not the local *.out file, so an empty *.out is not a
+# scraper failure.
+CANARIES: list[tuple[str, str, int, bool]] = [
+    ("kattis", "https://open.kattis.com/problems/oddecho", 1, False),
+    ("codeforces", "https://codeforces.com/problemset/problem/645/A", 4, False),
+    ("leetcode", "https://leetcode.com/problems/two-sum/", 1, True),
 ]
 
 MAX_ATTEMPTS = 3
 RETRY_SLEEP_SECONDS = 10
 
 
-def run_canary(workspace: str, platform: str, target: str, min_input_lines: int) -> list[str]:
+def run_canary(workspace: str, platform: str, target: str, min_input_lines: int, tolerate_empty_out: bool) -> list[str]:
     """Returns list of failure messages (empty list = pass)."""
     platform_dir = os.path.join(workspace, platform)
     pre_existing = (
@@ -84,7 +89,10 @@ def run_canary(workspace: str, platform: str, target: str, min_input_lines: int)
         fpath = os.path.join(problem_path, fname)
         if not os.path.exists(fpath):
             failures.append(f"{platform}: {fname} was not created")
-        elif os.path.getsize(fpath) == 0:
+            continue
+        if os.path.getsize(fpath) == 0:
+            if fname == "1.out" and tolerate_empty_out:
+                continue
             failures.append(
                 f"{platform}: {fname} is empty — scrape likely broken "
                 f"(target site changed its HTML / API)"
@@ -100,6 +108,16 @@ def run_canary(workspace: str, platform: str, target: str, min_input_lines: int)
                 f"{min_input_lines} — multi-line input may have collapsed onto a single line "
                 f"(e.g. <br> tags ignored by parser)"
             )
+
+    solution_path = os.path.join(problem_path, "Solution.java")
+    if not os.path.exists(solution_path):
+        failures.append(f"{platform}: Solution.java was not created")
+    elif os.path.getsize(solution_path) == 0:
+        failures.append(
+            f"{platform}: Solution.java is empty — scaffold likely broken "
+            f"(LeetCode codeSnippets field missing?)" if platform == "leetcode"
+            else f"{platform}: Solution.java is empty — scaffold likely broken"
+        )
 
     return failures
 
@@ -117,9 +135,9 @@ def main() -> int:
         os.chmod(os.path.join(workspace, "new.py"), 0o755)
 
         all_failures: list[str] = []
-        for platform, target, min_input_lines in CANARIES:
+        for platform, target, min_input_lines, tolerate_empty_out in CANARIES:
             print(f"\n=== Canary: {platform} ({target}) ===", flush=True)
-            fails = run_canary(workspace, platform, target, min_input_lines)
+            fails = run_canary(workspace, platform, target, min_input_lines, tolerate_empty_out)
             if fails:
                 for f in fails:
                     print(f"  FAIL  {f}", flush=True)

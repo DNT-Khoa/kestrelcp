@@ -1,27 +1,24 @@
 import * as vscode from "vscode";
 
 let cachedTerminal: vscode.Terminal | undefined;
-let cachedApiKey: string | undefined;
+let cachedEnvKey: string | undefined;
 
-export async function runInTerminal(cmd: string): Promise<void> {
+export async function runInTerminal(
+  cmd: string,
+  env: Record<string, string> = {},
+): Promise<void> {
   const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!root) return;
 
-  const apiKey =
-    vscode.workspace
-      .getConfiguration("kestrelcp")
-      .get<string>("anthropicApiKey") || "";
+  const envKey = JSON.stringify(env);
 
   if (
     !cachedTerminal ||
     cachedTerminal.exitStatus !== undefined ||
-    apiKey !== cachedApiKey
+    envKey !== cachedEnvKey
   ) {
     cachedTerminal?.dispose();
-    cachedApiKey = apiKey;
-    const env: Record<string, string> = {};
-    if (apiKey) env["ANTHROPIC_API_KEY"] = apiKey;
-
+    cachedEnvKey = envKey;
     cachedTerminal = vscode.window.createTerminal({
       name: "KestrelCP",
       cwd: root,

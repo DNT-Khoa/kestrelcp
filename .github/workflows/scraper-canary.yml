@@ -58,7 +58,7 @@ jobs:
           ${RUN_URL}
 
           ### Likely causes
-          - One of the target sites (Kattis / Codeforces) changed its HTML response shape.
+          - One of the target sites (Kattis / Codeforces) changed its HTML response shape, or LeetCode's GraphQL schema changed.
           - Transient network issue — re-run the workflow before assuming the scraper is broken.
 
           ### Next steps

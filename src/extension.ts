@@ -1,83 +1,31 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { ProblemsTreeProvider, Item } from "./tree";
+import * as child_process from "child_process";
+import {
+  DailyChallengeProvider,
+  fetchDailyChallenge,
+  isDailyScaffolded,
+} from "./daily";
 import { runInTerminal } from "./runner";
 
 let extensionRoot: string;
+let extensionContext: vscode.ExtensionContext;
+
+const LEETCODE_SESSION_KEY = "kestrelcp.leetcodeSession";
+const LEETCODE_CSRF_KEY = "kestrelcp.leetcodeCsrf";
+const ANTHROPIC_KEY = "kestrelcp.anthropicApiKey";
 
 export function activate(context: vscode.ExtensionContext) {
   extensionRoot = context.extensionPath;
+  extensionContext = context;
 
-  const provider = new ProblemsTreeProvider(platforms);
+  const daily = new DailyChallengeProvider();
   const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
-  // Track known problems to detect newly added ones
-  const knownProblems = new Set<string>(
-    context.workspaceState.get<string[]>("knownProblems", []),
-  );
-  let initialized = context.workspaceState.get<boolean>(
-    "problemTrackingInit",
-    false,
-  );
-
-  function scanProblems(): Set<string> {
-    const result = new Set<string>();
-    if (!root) return result;
-    for (const p of platforms()) {
-      const dir = path.join(root, p);
-      if (!fs.existsSync(dir)) continue;
-      try {
-        for (const d of fs.readdirSync(dir)) {
-          const problemDir = path.join(dir, d);
-          if (
-            fs.statSync(problemDir).isDirectory() &&
-            fs.existsSync(path.join(problemDir, "Solution.java"))
-          ) {
-            result.add(`${p}/${d}`);
-          }
-        }
-      } catch {}
-    }
-    return result;
-  }
-
-  function syncProblems(): string[] {
-    const current = scanProblems();
-    const justAdded: string[] = [];
-    if (!initialized) {
-      for (const p of current) knownProblems.add(p);
-      initialized = true;
-      context.workspaceState.update("problemTrackingInit", true);
-    } else {
-      for (const p of current) {
-        if (!knownProblems.has(p)) {
-          knownProblems.add(p);
-          justAdded.push(p);
-        }
-      }
-    }
-    for (const p of [...knownProblems]) {
-      if (!current.has(p)) {
-        knownProblems.delete(p);
-      }
-    }
-    context.workspaceState.update("knownProblems", [...knownProblems]);
-    return justAdded;
-  }
-
-  syncProblems();
-
   context.subscriptions.push(
-    vscode.commands.registerCommand("kestrelcp.init", () =>
-      initWorkspace(provider),
-    ),
-    vscode.commands.registerCommand("kestrelcp.newProblem", () =>
-      newProblem(provider),
-    ),
-    vscode.commands.registerCommand("kestrelcp.runTests", (item?: Item) =>
-      runTests(item),
-    ),
+    vscode.commands.registerCommand("kestrelcp.init", () => initWorkspace()),
+    vscode.commands.registerCommand("kestrelcp.newProblem", () => newProblem()),
     vscode.commands.registerCommand("kestrelcp.runTestsForCurrent", () =>
       runTestsForCurrent(),
     ),
@@ -85,85 +33,58 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("kestrelcp.runPlayground", () =>
       runPlayground(),
     ),
-    vscode.commands.registerCommand("kestrelcp.refetchAllTests", () =>
-      refetchAllTests(),
+    vscode.commands.registerCommand("kestrelcp.searchLeetcode", () =>
+      searchLeetcode(),
     ),
-    vscode.commands.registerCommand("kestrelcp.refreshProblems", () =>
-      provider.refresh(),
+    vscode.commands.registerCommand("kestrelcp.submitLeetcode", () =>
+      submitLeetcode(),
+    ),
+    vscode.commands.registerCommand("kestrelcp.setLeetcodeCookies", () =>
+      setLeetcodeCookies(),
+    ),
+    vscode.commands.registerCommand("kestrelcp.setAnthropicKey", () =>
+      setAnthropicKey(),
+    ),
+    vscode.commands.registerCommand("kestrelcp.refreshDaily", () =>
+      loadDaily(daily),
+    ),
+    vscode.commands.registerCommand("kestrelcp.openOrScaffoldDaily", () =>
+      openOrScaffoldDaily(daily),
     ),
   );
 
-  const treeView = vscode.window.createTreeView("kestrelcp.problems", {
-    treeDataProvider: provider,
+  const dailyView = vscode.window.createTreeView("kestrelcp.daily", {
+    treeDataProvider: daily,
   });
-  context.subscriptions.push(treeView);
+  context.subscriptions.push(dailyView);
 
-  function revealActiveProblem() {
-    if (!root || !treeView.visible) return;
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) return;
-    const rel = path.relative(root, editor.document.uri.fsPath).split(path.sep);
-    if (rel.length < 3 || !platforms().includes(rel[0])) return;
-    const [platform, problem] = rel;
-    const item = new Item(
-      problem,
-      vscode.TreeItemCollapsibleState.None,
-      "problem",
-      platform,
-      problem,
-    );
-    treeView.reveal(item, { focus: false, select: true });
-  }
+  checkPython3();
+  migrateAnthropicKey();
+  loadDaily(daily);
 
-  treeView.onDidChangeVisibility((e) => {
-    if (e.visible) revealActiveProblem();
-  });
+  updateActiveContext();
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(() => {
-      if (treeView.visible) revealActiveProblem();
-    }),
+    vscode.window.onDidChangeActiveTextEditor(() => updateActiveContext()),
   );
 
   if (root) {
-    const watcher =
-      vscode.workspace.createFileSystemWatcher("**/*.{java,in,out}");
-    const dirWatcher = vscode.workspace.createFileSystemWatcher("**/*/");
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      "**/{kattis,codeforces,leetcode}/*/Solution.java",
+    );
 
     let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-    const debouncedSync = () => {
+    const onCreate = (uri: vscode.Uri) => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        const added = syncProblems();
-        provider.refresh();
-        if (added.length > 0) {
-          const key = added[added.length - 1];
-          const [platform, problem] = key.split("/");
-          const item = new Item(
-            problem,
-            vscode.TreeItemCollapsibleState.None,
-            "problem",
-            platform,
-            problem,
-          );
-          const sol = path.join(root, platform, problem, "Solution.java");
-          setTimeout(() => {
-            if (treeView.visible) {
-              treeView.reveal(item, { focus: false, select: true });
-            }
-            vscode.commands.executeCommand(
-              "vscode.open",
-              vscode.Uri.file(sol),
-            );
-          }, 200);
+        vscode.commands.executeCommand("vscode.open", uri);
+        if (daily.getState().kind === "loaded") {
+          loadDaily(daily);
         }
-      }, 500);
+      }, 300);
     };
 
-    watcher.onDidCreate(debouncedSync);
-    watcher.onDidDelete(debouncedSync);
-    dirWatcher.onDidCreate(debouncedSync);
-    dirWatcher.onDidDelete(debouncedSync);
-    context.subscriptions.push(watcher, dirWatcher);
+    watcher.onDidCreate(onCreate);
+    context.subscriptions.push(watcher);
   }
 }
 
@@ -193,7 +114,45 @@ function requireInit(): string | undefined {
 }
 
 function platforms(): string[] {
-  return ["codeforces", "kattis"];
+  return ["codeforces", "kattis", "leetcode"];
+}
+
+function updateActiveContext() {
+  const editor = vscode.window.activeTextEditor;
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  let isProblem = false;
+  let isLeetcode = false;
+  let isPlayground = false;
+  if (editor && root) {
+    const rel = path.relative(root, editor.document.uri.fsPath).split(path.sep);
+    const filename = path.basename(editor.document.uri.fsPath);
+    if (
+      filename === "Solution.java" &&
+      rel.length >= 3 &&
+      platforms().includes(rel[0])
+    ) {
+      isProblem = true;
+      if (rel[0] === "leetcode") isLeetcode = true;
+    }
+    if (filename === "Playground.java" && rel[0] === "playground") {
+      isPlayground = true;
+    }
+  }
+  vscode.commands.executeCommand(
+    "setContext",
+    "kestrelcp.activeIsProblem",
+    isProblem,
+  );
+  vscode.commands.executeCommand(
+    "setContext",
+    "kestrelcp.activeIsLeetcode",
+    isLeetcode,
+  );
+  vscode.commands.executeCommand(
+    "setContext",
+    "kestrelcp.activeIsPlayground",
+    isPlayground,
+  );
 }
 
 function shellQuote(s: string): string {
@@ -201,10 +160,63 @@ function shellQuote(s: string): string {
 }
 
 function bundledScript(name: string): string {
-  const pythonPath =
-    vscode.workspace.getConfiguration("kestrelcp").get<string>("pythonPath") ||
-    "python3";
-  return `${shellQuote(pythonPath)} ${shellQuote(path.join(extensionRoot, "scripts", name))}`;
+  return `python3 ${shellQuote(path.join(extensionRoot, "scripts", name))}`;
+}
+
+function checkPython3(): void {
+  const child = child_process.spawn("python3", ["--version"], {
+    stdio: "ignore",
+    shell: false,
+  });
+  child.on("error", () => warnNoPython());
+  child.on("exit", (code) => {
+    if (code !== 0) warnNoPython();
+  });
+}
+
+function warnNoPython(): void {
+  vscode.window.showErrorMessage(
+    "KestrelCP: `python3` not found on PATH. Install Python 3.10+ and ensure `python3 --version` works from your shell, otherwise the bundled scripts (new.py / test.py / test_leetcode.py / submit_leetcode.py / commit.py) cannot run.",
+  );
+}
+
+async function leetcodeEnv(): Promise<Record<string, string>> {
+  const env: Record<string, string> = {};
+  const session = await extensionContext.secrets.get(LEETCODE_SESSION_KEY);
+  const csrf = await extensionContext.secrets.get(LEETCODE_CSRF_KEY);
+  if (session) env["LEETCODE_SESSION"] = session;
+  if (csrf) env["LEETCODE_CSRF"] = csrf;
+  return env;
+}
+
+async function fullEnv(
+  extra: Record<string, string> = {},
+): Promise<Record<string, string>> {
+  const env: Record<string, string> = { ...extra };
+  const apiKey = await extensionContext.secrets.get(ANTHROPIC_KEY);
+  if (apiKey) env["ANTHROPIC_API_KEY"] = apiKey;
+  return env;
+}
+
+async function migrateAnthropicKey() {
+  const existing = await extensionContext.secrets.get(ANTHROPIC_KEY);
+  if (existing) return;
+  const legacy = vscode.workspace
+    .getConfiguration("kestrelcp")
+    .get<string>("anthropicApiKey");
+  if (!legacy || !legacy.trim()) return;
+  await extensionContext.secrets.store(ANTHROPIC_KEY, legacy.trim());
+  vscode.window
+    .showInformationMessage(
+      "KestrelCP moved your Anthropic API key from settings to encrypted SecretStorage. " +
+        "You can safely delete `kestrelcp.anthropicApiKey` from your settings.json.",
+      "Open settings.json",
+    )
+    .then((choice) => {
+      if (choice === "Open settings.json") {
+        vscode.commands.executeCommand("workbench.action.openSettingsJson");
+      }
+    });
 }
 
 const PLAYGROUND_TEMPLATE = `public class Playground {
@@ -221,7 +233,7 @@ function ensurePlayground(root: string) {
   if (!fs.existsSync(file)) fs.writeFileSync(file, PLAYGROUND_TEMPLATE);
 }
 
-async function initWorkspace(provider: ProblemsTreeProvider) {
+async function initWorkspace() {
   const root = workspaceRoot();
   if (!root) return;
 
@@ -232,17 +244,19 @@ async function initWorkspace(provider: ProblemsTreeProvider) {
   ensurePlayground(root);
 
   vscode.window.showInformationMessage("KestrelCP workspace ready.");
-  provider.refresh();
 }
 
 async function runPlayground() {
   const root = requireInit();
   if (!root) return;
   ensurePlayground(root);
-  await runInTerminal("( cd playground && javac *.java && java Playground )");
+  await runInTerminal(
+    "( cd playground && javac *.java && java Playground )",
+    await fullEnv(),
+  );
 }
 
-async function newProblem(provider: ProblemsTreeProvider) {
+async function newProblem() {
   const root = requireInit();
   if (!root) return;
 
@@ -253,7 +267,12 @@ async function newProblem(provider: ProblemsTreeProvider) {
 
   const url = await vscode.window.showInputBox({
     prompt: "Problem URL",
-    placeHolder: "https://open.kattis.com/problems/oddecho",
+    placeHolder:
+      platform === "leetcode"
+        ? "https://leetcode.com/problems/two-sum/"
+        : platform === "codeforces"
+          ? "https://codeforces.com/problemset/problem/1/A"
+          : "https://open.kattis.com/problems/oddecho",
     validateInput: (v) =>
       v.startsWith("http://") || v.startsWith("https://")
         ? undefined
@@ -263,90 +282,40 @@ async function newProblem(provider: ProblemsTreeProvider) {
 
   await runInTerminal(
     `${bundledScript("new.py")} ${shellQuote(platform)} ${shellQuote(url)}`,
+    await fullEnv(),
   );
 }
 
-async function runTests(item?: Item) {
-  if (item?.contextValue !== "problem") return;
-  const root = requireInit();
-  if (!root) return;
-  await runInTerminal(
-    `${bundledScript("test.py")} ${shellQuote(item.platform)} ${shellQuote(item.problem!)}`,
-  );
-}
-
-async function refetchAllTests() {
-  const root = requireInit();
-  if (!root) return;
-
-  const counts: Record<string, number> = {};
-  let total = 0;
-  for (const p of platforms()) {
-    const dir = path.join(root, p);
-    if (!fs.existsSync(dir)) continue;
-    const probs = fs.readdirSync(dir).filter((d) => {
-      try {
-        return fs.statSync(path.join(dir, d)).isDirectory();
-      } catch {
-        return false;
-      }
-    });
-    if (probs.length > 0) {
-      counts[p] = probs.length;
-      total += probs.length;
-    }
-  }
-
-  if (total === 0) {
-    vscode.window.showInformationMessage("KestrelCP: no problems to refetch.");
-    return;
-  }
-
-  const summary = Object.entries(counts)
-    .map(([p, n]) => `${p}: ${n}`)
-    .join(", ");
-  const choice = await vscode.window.showWarningMessage(
-    `Re-fetch sample tests for ${total} problem(s) (${summary})? ` +
-      `This hits each platform once per problem and overwrites *.in / *.out files. ` +
-      `Solution.java and notes.md are preserved.`,
-    { modal: true },
-    "Refetch all",
-  );
-  if (choice !== "Refetch all") return;
-
-  const platformList = Object.keys(counts)
-    .map((p) => shellQuote(p))
-    .join(" ");
-  const newPyCmd = bundledScript("new.py");
-  const cmd = [
-    `for p in ${platformList}; do`,
-    `for d in "$p"/*/; do`,
-    `[ -d "$d" ] || continue;`,
-    `${newPyCmd} --refetch "$p" "$(basename "$d")" || echo "  (failed: $p/$(basename "$d"))";`,
-    `done; done; echo; echo "KestrelCP: refetch complete."`,
-  ].join(" ");
-
-  await runInTerminal(cmd);
+function activeProblem(root: string): { platform: string; problem: string } | undefined {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return undefined;
+  const rel = path.relative(root, editor.document.uri.fsPath).split(path.sep);
+  if (rel.length < 3 || !platforms().includes(rel[0])) return undefined;
+  if (path.basename(editor.document.uri.fsPath) !== "Solution.java") return undefined;
+  return { platform: rel[0], problem: rel[1] };
 }
 
 async function runTestsForCurrent() {
-  const editor = vscode.window.activeTextEditor;
   const root = requireInit();
   if (!root) return;
-  if (!editor) {
-    vscode.window.showErrorMessage("No active editor.");
-    return;
-  }
-  const rel = path.relative(root, editor.document.uri.fsPath).split(path.sep);
-  if (rel.length < 3 || !platforms().includes(rel[0])) {
+  const active = activeProblem(root);
+  if (!active) {
     vscode.window.showErrorMessage(
-      "Active file is not inside <platform>/<problem>/.",
+      "KestrelCP: open a Solution.java inside <platform>/<problem>/ first.",
     );
     return;
   }
-  await runInTerminal(
-    `${bundledScript("test.py")} ${shellQuote(rel[0])} ${shellQuote(rel[1])}`,
-  );
+  if (active.platform === "leetcode") {
+    await runInTerminal(
+      `${bundledScript("test_leetcode.py")} ${shellQuote(active.problem)}`,
+      await fullEnv(await leetcodeEnv()),
+    );
+  } else {
+    await runInTerminal(
+      `${bundledScript("test.py")} ${shellQuote(active.platform)} ${shellQuote(active.problem)}`,
+      await fullEnv(),
+    );
+  }
 }
 
 async function aiCommit() {
@@ -356,5 +325,252 @@ async function aiCommit() {
     vscode.workspace
       .getConfiguration("kestrelcp")
       .get<string>("commitModel") || "claude-haiku-4-5";
-  await runInTerminal(`${bundledScript("commit.py")} ${shellQuote(model)}`);
+  await runInTerminal(
+    `${bundledScript("commit.py")} ${shellQuote(model)}`,
+    await fullEnv(),
+  );
+}
+
+async function submitLeetcode() {
+  const root = requireInit();
+  if (!root) return;
+  const active = activeProblem(root);
+  if (!active || active.platform !== "leetcode") {
+    vscode.window.showErrorMessage(
+      "KestrelCP: open a LeetCode Solution.java first.",
+    );
+    return;
+  }
+
+  const env = await leetcodeEnv();
+  if (!env["LEETCODE_SESSION"] || !env["LEETCODE_CSRF"]) {
+    const choice = await vscode.window.showWarningMessage(
+      "LeetCode cookies not set. Run 'KestrelCP: Set LeetCode Cookies' first.",
+      "Set cookies now",
+    );
+    if (choice === "Set cookies now") {
+      await setLeetcodeCookies();
+    }
+    return;
+  }
+
+  await runInTerminal(
+    `${bundledScript("submit_leetcode.py")} ${shellQuote(active.problem)}`,
+    await fullEnv(env),
+  );
+}
+
+async function setLeetcodeCookies() {
+  const session = await vscode.window.showInputBox({
+    prompt:
+      "Paste LEETCODE_SESSION (DevTools > Application > Cookies > leetcode.com). Submit empty to clear.",
+    password: true,
+    ignoreFocusOut: true,
+  });
+  if (session === undefined) return;
+
+  const csrf = await vscode.window.showInputBox({
+    prompt: "Paste csrftoken (same DevTools panel). Submit empty to clear.",
+    password: true,
+    ignoreFocusOut: true,
+  });
+  if (csrf === undefined) return;
+
+  const cleared: string[] = [];
+  const stored: string[] = [];
+
+  if (session.trim() === "") {
+    await extensionContext.secrets.delete(LEETCODE_SESSION_KEY);
+    cleared.push("LEETCODE_SESSION");
+  } else {
+    await extensionContext.secrets.store(LEETCODE_SESSION_KEY, session.trim());
+    stored.push("LEETCODE_SESSION");
+  }
+  if (csrf.trim() === "") {
+    await extensionContext.secrets.delete(LEETCODE_CSRF_KEY);
+    cleared.push("csrftoken");
+  } else {
+    await extensionContext.secrets.store(LEETCODE_CSRF_KEY, csrf.trim());
+    stored.push("csrftoken");
+  }
+
+  const parts: string[] = [];
+  if (stored.length) parts.push(`stored ${stored.join(" + ")}`);
+  if (cleared.length) parts.push(`cleared ${cleared.join(" + ")}`);
+  vscode.window.showInformationMessage(`KestrelCP: ${parts.join("; ")}.`);
+}
+
+async function setAnthropicKey() {
+  const key = await vscode.window.showInputBox({
+    prompt: "Paste Anthropic API key (sk-ant-...). Submit empty to clear.",
+    password: true,
+    ignoreFocusOut: true,
+  });
+  if (key === undefined) return;
+
+  if (key.trim() === "") {
+    await extensionContext.secrets.delete(ANTHROPIC_KEY);
+    vscode.window.showInformationMessage("KestrelCP: Anthropic key cleared.");
+  } else {
+    await extensionContext.secrets.store(ANTHROPIC_KEY, key.trim());
+    vscode.window.showInformationMessage(
+      "KestrelCP: Anthropic key stored securely.",
+    );
+  }
+}
+
+interface LeetcodeSearchResult {
+  title: string;
+  titleSlug: string;
+  difficulty: string;
+  acRate: number;
+  paidOnly: boolean;
+}
+
+let cachedAllProblems: LeetcodeSearchResult[] | undefined;
+
+async function fetchAllLeetcodeProblems(): Promise<LeetcodeSearchResult[]> {
+  if (cachedAllProblems) return cachedAllProblems;
+  // /api/problems/all/ is the REST catalog endpoint — works anonymously and
+  // returns ~4000 problems in one ~1 MB JSON blob. The GraphQL
+  // problemsetQuestionList field was deprecated; its V2 successor walls
+  // searchKeyword behind auth, so client-side filter over this REST list
+  // is the simplest no-auth path.
+  const r = await fetch("https://leetcode.com/api/problems/all/", {
+    headers: { "User-Agent": "kestrelcp/1.0" },
+  });
+  if (!r.ok) {
+    throw new Error(`LeetCode catalog failed: HTTP ${r.status}`);
+  }
+  const j: any = await r.json();
+  const levels = ["", "Easy", "Medium", "Hard"];
+  cachedAllProblems = ((j?.stat_status_pairs as any[]) || []).map((entry) => {
+    const stat = entry?.stat || {};
+    const total = stat.total_submitted || 0;
+    return {
+      title: stat.question__title || "",
+      titleSlug: stat.question__title_slug || "",
+      difficulty: levels[entry?.difficulty?.level || 0] || "?",
+      acRate: total > 0 ? (stat.total_acs / total) * 100 : 0,
+      paidOnly: !!entry?.paid_only,
+    };
+  });
+  return cachedAllProblems;
+}
+
+async function fetchLeetcodeQuestions(
+  searchKeywords: string,
+): Promise<LeetcodeSearchResult[]> {
+  const all = await fetchAllLeetcodeProblems();
+  const needle = searchKeywords.toLowerCase().trim();
+  if (!needle) return all.slice(0, 30);
+  return all
+    .filter((q) => q.title.toLowerCase().includes(needle))
+    .slice(0, 30);
+}
+
+async function searchLeetcode() {
+  const root = requireInit();
+  if (!root) return;
+
+  const query = await vscode.window.showInputBox({
+    prompt: "Search LeetCode problems by title or keyword",
+    placeHolder: "two sum",
+  });
+  if (!query) return;
+
+  const questions = await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: "Searching LeetCode...",
+    },
+    async () => {
+      try {
+        return await fetchLeetcodeQuestions(query);
+      } catch (e: any) {
+        vscode.window.showErrorMessage(`KestrelCP: ${e.message}`);
+        return [];
+      }
+    },
+  );
+
+  if (questions.length === 0) {
+    vscode.window.showInformationMessage(
+      "KestrelCP: no LeetCode problems match that query.",
+    );
+    return;
+  }
+
+  const picks = questions.map((q) => ({
+    label: `${q.title}${q.paidOnly ? " 🔒" : ""}`,
+    description: `${q.difficulty} · ${q.acRate.toFixed(1)}% AC`,
+    detail: `https://leetcode.com/problems/${q.titleSlug}/`,
+    question: q,
+  }));
+
+  const picked = await vscode.window.showQuickPick(picks, {
+    placeHolder: "Pick a problem to scaffold",
+    matchOnDescription: true,
+    matchOnDetail: true,
+  });
+  if (!picked) return;
+
+  if (picked.question.paidOnly) {
+    vscode.window.showErrorMessage(
+      "KestrelCP: this is a premium-only LeetCode problem and cannot be scaffolded without a paid subscription.",
+    );
+    return;
+  }
+
+  await runInTerminal(
+    `${bundledScript("new.py")} leetcode ${shellQuote(picked.detail)}`,
+    await fullEnv(),
+  );
+}
+
+async function loadDaily(provider: DailyChallengeProvider) {
+  provider.setState({ kind: "loading" });
+  try {
+    const question = await fetchDailyChallenge();
+    if (!question) {
+      provider.setState({ kind: "none" });
+      return;
+    }
+    const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const scaffolded = root
+      ? isDailyScaffolded(root, question.titleSlug)
+      : false;
+    provider.setState({ kind: "loaded", question, scaffolded });
+  } catch (e: any) {
+    provider.setState({
+      kind: "error",
+      message: `Could not load daily challenge: ${e.message || e}`,
+    });
+  }
+}
+
+async function openOrScaffoldDaily(provider: DailyChallengeProvider) {
+  const state = provider.getState();
+  if (state.kind !== "loaded") return;
+  const root = requireInit();
+  if (!root) return;
+  const { question } = state;
+  const solutionPath = path.join(
+    root,
+    "leetcode",
+    question.titleSlug,
+    "Solution.java",
+  );
+  if (fs.existsSync(solutionPath)) {
+    await vscode.commands.executeCommand(
+      "vscode.open",
+      vscode.Uri.file(solutionPath),
+    );
+    return;
+  }
+  const url = `https://leetcode.com${question.link}`;
+  await runInTerminal(
+    `${bundledScript("new.py")} leetcode ${shellQuote(url)}`,
+    await fullEnv(),
+  );
 }

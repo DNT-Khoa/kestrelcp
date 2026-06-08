@@ -7,6 +7,7 @@ Usage:
 Examples:
   ./new.py kattis https://open.kattis.com/problems/oddecho
   ./new.py codeforces https://codeforces.com/problemset/problem/1/A
+  ./new.py leetcode https://leetcode.com/problems/two-sum/
 """
 
 import argparse
@@ -102,7 +103,7 @@ def fetch_kattis(url: str) -> tuple[list[tuple[str, str]], str]:
 
 def derive_problem_name(platform: str, url: str) -> str:
     """Extract a folder-safe problem name from a problem URL."""
-    if platform == "kattis":
+    if platform in ("kattis", "leetcode"):
         m = re.search(r"/problems/([^/?#]+)", url)
         if m:
             return m.group(1)
@@ -111,6 +112,119 @@ def derive_problem_name(platform: str, url: str) -> str:
         if m:
             return f"{m.group(1)}{m.group(2)}"
     raise ValueError(f"could not derive problem name from URL: {url}")
+
+
+def fetch_leetcode(url: str) -> tuple[list[tuple[str, str]], str, str | None]:
+    """Returns (samples, description_md, java_template) from a LeetCode problem.
+
+    LeetCode does not render full problem HTML on a single fetch — but the
+    public GraphQL endpoint hands us everything in one shot without auth:
+      - exampleTestcases: newline-separated inputs, one param per line
+      - metaData:        param count + types, used to group lines into cases
+      - content:         HTML problem statement (also has expected outputs)
+      - codeSnippets:    per-language starter code (we use the Java one)
+
+    Outputs aren't in exampleTestcases — we best-effort scrape them from the
+    HTML content. If that fails the local *.out files end up empty; the real
+    pass/fail still comes from the judge's expected_code_answer at test time.
+    """
+    import json
+    import requests
+    from bs4 import BeautifulSoup
+
+    m = re.search(r"/problems/([^/]+)", url)
+    if not m:
+        raise ValueError(f"could not extract slug from {url}")
+    slug = m.group(1)
+
+    query = """
+    query questionData($titleSlug: String!) {
+      question(titleSlug: $titleSlug) {
+        content
+        exampleTestcases
+        metaData
+        codeSnippets { langSlug code }
+      }
+    }
+    """
+    r = requests.post(
+        "https://leetcode.com/graphql/",
+        json={
+            "query": query,
+            "variables": {"titleSlug": slug},
+            "operationName": "questionData",
+        },
+        headers={**HEADERS, "Content-Type": "application/json", "Referer": url},
+        timeout=HTTP_TIMEOUT_SECONDS,
+    )
+    r.raise_for_status()
+    question = (r.json().get("data") or {}).get("question")
+    if not question:
+        raise ValueError(
+            f"no public problem found for slug '{slug}' (premium-only?). "
+            f"KestrelCP cannot scaffold premium problems — they need a LeetCode subscription."
+        )
+
+    raw_inputs = question.get("exampleTestcases") or ""
+    meta = json.loads(question.get("metaData") or "{}")
+    n_params = max(1, len(meta.get("params", [])))
+
+    lines = raw_inputs.split("\n") if raw_inputs else []
+    inputs: list[str] = []
+    for i in range(0, len(lines), n_params):
+        chunk = lines[i:i + n_params]
+        if len(chunk) == n_params:
+            inputs.append("\n".join(chunk))
+
+    content_html = question.get("content") or ""
+    soup = BeautifulSoup(content_html, "html.parser")
+
+    outputs: list[str] = []
+    # New LeetCode HTML (2024+): each example wrapped in <div class="example-block">
+    # with <p><strong>Output:</strong> <span class="example-io">...</span></p>
+    for block in soup.select("div.example-block"):
+        for p in block.find_all("p"):
+            strong = p.find("strong")
+            if not strong or "Output" not in strong.get_text():
+                continue
+            span = p.find("span", class_="example-io")
+            if span:
+                outputs.append(span.get_text("\n").strip())
+            else:
+                txt = p.get_text(" ", strip=True)
+                mo = re.match(r"^Output:\s*(.+)$", txt)
+                if mo:
+                    outputs.append(mo.group(1).strip())
+            break
+    # Legacy format: <pre>Input: ...\nOutput: ...\nExplanation: ...</pre>
+    if not outputs:
+        for pre in soup.select("pre"):
+            t = pre.get_text("\n")
+            mo = re.search(r"Output:\s*(.+?)(?:\n\s*Explanation|\Z)", t, re.DOTALL)
+            if mo:
+                outputs.append(mo.group(1).strip())
+
+    # Pad outputs with empty strings if we found fewer than inputs.
+    while len(outputs) < len(inputs):
+        outputs.append("")
+    samples = list(zip(inputs, outputs[: len(inputs)]))
+
+    desc_lines = []
+    for el in soup.find_all(["p", "li"]):
+        if el.find_parent("pre") or el.find_parent("div", class_="example-block"):
+            continue
+        t = el.get_text(" ", strip=True)
+        if t:
+            desc_lines.append(t if el.name == "p" else f"- {t}")
+    description = "\n\n".join(desc_lines)
+
+    java_template = None
+    for snip in question.get("codeSnippets") or []:
+        if snip.get("langSlug") == "java":
+            java_template = snip.get("code")
+            break
+
+    return samples, description, java_template
 
 
 def fetch_codeforces(url: str) -> tuple[list[tuple[str, str]], str]:
@@ -164,22 +278,21 @@ def scaffold(platform: str, problem: str, url: str) -> None:
 
     os.makedirs(problem_dir)
 
-    # Write Solution.java
+    samples, _, java_template = fetch_page(platform, url)
+
     solution_path = os.path.join(problem_dir, "Solution.java")
+    solution_code = java_template if java_template else SOLUTION_TEMPLATE
     with open(solution_path, "w") as f:
-        f.write(SOLUTION_TEMPLATE)
+        f.write(solution_code)
+        if not solution_code.endswith("\n"):
+            f.write("\n")
     print(f"Created: {solution_path}")
 
-    # Fetch samples
-    samples, _ = fetch_page(platform, url)
-
-    # Write notes.md
     notes_path = os.path.join(problem_dir, "notes.md")
     with open(notes_path, "w") as f:
         f.write(f"# {problem}\n\n[Problem]({url})\n\n")
     print(f"Created: {notes_path}")
 
-    # Write sample tests
     if samples:
         for i, (inp, out) in enumerate(samples, start=1):
             _write_sample(os.path.join(problem_dir, f"{i}.in"), inp)
@@ -189,23 +302,41 @@ def scaffold(platform: str, problem: str, url: str) -> None:
         print(f"Warning: no sample tests found at {url}")
         _touch_empty_tests(problem_dir)
 
-    print(f"\nNext: open {os.path.join(platform, problem, 'Solution.java')} and click the ▶ button on the problem in the KestrelCP sidebar to run tests.")
+    print(f"\nNext: open {os.path.join(platform, problem, 'Solution.java')} and click the ▶ button in the editor toolbar to run tests.")
 
 
-def fetch_page(platform: str, url: str) -> tuple[list[tuple[str, str]], str]:
+def fetch_page(platform: str, url: str) -> tuple[list[tuple[str, str]], str, str | None]:
+    """(samples, description_md, java_template_or_none)
+
+    java_template is non-None only for LeetCode — its codeSnippets field gives
+    us the exact starter code from the editor, with the right method signature.
+    """
+    if platform == "leetcode":
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                return fetch_leetcode(url)
+            except Exception as e:
+                last_exc = e
+                if type(e).__name__ not in TRANSIENT_EXC_NAMES or attempt == 2:
+                    break
+                wait = 2 * (attempt + 1)
+                print(f"Warning: fetch attempt {attempt + 1} failed ({e}); retrying in {wait}s...")
+                time.sleep(wait)
+        print(f"Warning: could not fetch page ({last_exc})")
+        return [], "", None
+
     fetchers = {
         "kattis": fetch_kattis,
         "codeforces": fetch_codeforces,
     }
-    fn = fetchers.get(platform)
-    if fn is None:
-        print(f"Note: auto-fetch not supported for '{platform}', skipping.")
-        return [], ""
+    fn = fetchers[platform]
 
-    last_exc: Exception | None = None
+    last_exc = None
     for attempt in range(3):
         try:
-            return fn(url)
+            samples, description = fn(url)
+            return samples, description, None
         except Exception as e:
             last_exc = e
             if type(e).__name__ not in TRANSIENT_EXC_NAMES or attempt == 2:
@@ -214,7 +345,7 @@ def fetch_page(platform: str, url: str) -> tuple[list[tuple[str, str]], str]:
             print(f"Warning: fetch attempt {attempt + 1} failed ({e}); retrying in {wait}s...")
             time.sleep(wait)
     print(f"Warning: could not fetch page ({last_exc})")
-    return [], ""
+    return [], "", None
 
 
 def _touch_empty_tests(problem_dir: str) -> None:
@@ -231,94 +362,29 @@ def _write_sample(path: str, text: str) -> None:
         f.write(text)
 
 
-def _read_url_from_notes(problem_dir: str) -> str | None:
-    notes_path = os.path.join(problem_dir, "notes.md")
-    if not os.path.exists(notes_path):
-        return None
-    with open(notes_path) as fh:
-        for line in fh:
-            m = re.match(r"\[Problem\]\((https?://[^)]+)\)", line.strip())
-            if m:
-                return m.group(1)
-    return None
-
-
-def refetch_samples(platform: str, problem: str, url: str | None = None) -> None:
-    """Re-fetch sample tests for an existing problem.
-
-    Overwrites *.in / *.out files, leaves Solution.java and notes.md untouched.
-    Use this to repair problems whose samples were saved by an older buggy
-    scraper, without losing in-progress solution code.
-    """
-    problem_dir = os.path.join(WORKSPACE, platform, problem)
-    if not os.path.isdir(problem_dir):
-        print(f"Not found: {problem_dir}", file=sys.stderr)
-        sys.exit(1)
-
-    if url is None:
-        url = _read_url_from_notes(problem_dir)
-        if not url:
-            print(
-                f"Could not find a [Problem](url) line in {problem_dir}/notes.md. "
-                f"Add one (e.g. [Problem](https://...)) and re-run KestrelCP: Refetch All Sample Tests.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
-    samples, _ = fetch_page(platform, url)
-    if not samples:
-        print(f"No samples fetched from {url} — aborting (existing files left alone)", file=sys.stderr)
-        sys.exit(1)
-
-    for f in os.listdir(problem_dir):
-        if f.endswith(".in") or f.endswith(".out"):
-            os.remove(os.path.join(problem_dir, f))
-
-    for i, (inp, out) in enumerate(samples, start=1):
-        _write_sample(os.path.join(problem_dir, f"{i}.in"), inp)
-        _write_sample(os.path.join(problem_dir, f"{i}.out"), out)
-
-    print(f"Refetched {len(samples)} sample test(s) from {url}")
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="new.py",
         description="Scaffold a new competitive programming problem.",
         usage="./new.py <platform> <url>",
     )
-    parser.add_argument("platform", choices=["kattis", "codeforces"])
-    parser.add_argument("problem_or_url", help="full problem URL")
-    parser.add_argument("url", nargs="?", help=argparse.SUPPRESS)
-    parser.add_argument(
-        "--refetch",
-        action="store_true",
-        help="re-fetch sample tests for an existing problem (overwrites *.in/*.out only)",
-    )
+    parser.add_argument("platform", choices=["kattis", "codeforces", "leetcode"])
+    parser.add_argument("url", help="full problem URL")
 
     if argcomplete:
         argcomplete.autocomplete(parser)
 
     args = parser.parse_args()
 
-    if args.refetch:
-        if args.problem_or_url.startswith(("http://", "https://")):
-            parser.error("--refetch expects a problem name as the second arg, not a URL")
-        refetch_samples(args.platform, args.problem_or_url, args.url)
-        return
+    if not args.url.startswith(("http://", "https://")):
+        parser.error("expected a full URL (e.g. https://leetcode.com/problems/two-sum/)")
 
-    if not args.problem_or_url.startswith(("http://", "https://")):
-        parser.error("expected a full URL (e.g. https://open.kattis.com/problems/oddecho)")
-
-    url = args.problem_or_url
-    if args.url is not None:
-        parser.error("when first arg is a URL, do not pass a second URL")
     try:
-        problem = derive_problem_name(args.platform, url)
+        problem = derive_problem_name(args.platform, args.url)
     except ValueError as e:
         parser.error(str(e))
 
-    scaffold(args.platform, problem, url)
+    scaffold(args.platform, problem, args.url)
 
 
 if __name__ == "__main__":

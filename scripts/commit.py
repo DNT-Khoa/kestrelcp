@@ -31,9 +31,9 @@ def run(cmd: list[str]) -> str:
 def main() -> None:
     if not os.environ.get("ANTHROPIC_API_KEY"):
         print("Error: ANTHROPIC_API_KEY is not set.", file=sys.stderr)
-        print("Get a key at https://console.anthropic.com/ and add it to your shell:", file=sys.stderr)
-        print("  export ANTHROPIC_API_KEY=<your-key>", file=sys.stderr)
-        print("See README.md for setup details.", file=sys.stderr)
+        print("Get a key at https://console.anthropic.com/ and store it via:", file=sys.stderr)
+        print("  Cmd+Shift+P → KestrelCP: Set Anthropic API Key", file=sys.stderr)
+        print("Or fall back to a shell export: export ANTHROPIC_API_KEY=<your-key>", file=sys.stderr)
         sys.exit(1)
 
     client = anthropic.Anthropic()

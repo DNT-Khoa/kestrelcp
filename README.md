@@ -1,12 +1,20 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/DNT-Khoa/kestrelcp/main/media/icon.png" alt="KestrelCP icon" width="128" height="128">
+</p>
+
 <h1 align="center">KestrelCP</h1>
 
 <p align="center">
   A VS Code extension for competitive programming — scaffold problems from URLs, run tests against bundled cases, and commit with AI-generated messages, all without leaving the editor.
 </p>
 
-![Editor](https://img.shields.io/badge/editor-VS%20Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)
-![Language](https://img.shields.io/badge/language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Solutions](https://img.shields.io/badge/solutions-Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+<p align="center">
+  <img src="https://img.shields.io/badge/editor-VS%20Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white" alt="Editor: VS Code">
+  <img src="https://img.shields.io/badge/language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="Language: TypeScript">
+  <img src="https://img.shields.io/badge/solutions-Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Solutions: Java">
+</p>
+
+&nbsp;
 
 > [!NOTE]
 > This extension is primarily built for my personal use — a local environment to debug and implement competitive programming solutions from Kattis, Codeforces, and LeetCode. Kattis and Codeforces solutions still need to be manually submitted on each platform's official site; LeetCode can be submitted directly from the editor. A nice side benefit: committing solutions to a Git repo helps keep your GitHub contribution graph active.

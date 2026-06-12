@@ -26,11 +26,7 @@ except ImportError:
 
 WORKSPACE = os.getcwd()
 
-SOLUTION_TEMPLATE = """\
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-
+COMPLEXITY_JAVADOC = """\
 /**
  * <b>Time complexity:</b> O(?)
  *
@@ -41,16 +37,37 @@ import java.io.PrintWriter;
  *   <li></li>
  * </ul>
  */
-public class Solution {
-    public static void main(String[] args) throws Exception {
+"""
+
+SOLUTION_TEMPLATE = f"""\
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+
+{COMPLEXITY_JAVADOC}public class Solution {{
+    public static void main(String[] args) throws Exception {{
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
         PrintWriter pw = new PrintWriter(System.out);
         // your code here
 
         pw.close();
-    }
-}
+    }}
+}}
 """
+
+
+def _inject_complexity_javadoc(code: str) -> str:
+    """Insert COMPLEXITY_JAVADOC directly above the `class Solution` declaration.
+
+    LeetCode's codeSnippets sometimes carry a leading `/** Definition for ... */`
+    block describing helper types (ListNode, TreeNode); we want the header to sit
+    on the user's class, not above those.
+    """
+    pattern = re.compile(r"^((?:public\s+|final\s+)*class\s+Solution\b)", re.MULTILINE)
+    m = pattern.search(code)
+    if not m:
+        return COMPLEXITY_JAVADOC + code
+    return code[:m.start()] + COMPLEXITY_JAVADOC + code[m.start():]
 
 HEADERS = {
     "User-Agent": (
@@ -281,7 +298,7 @@ def scaffold(platform: str, problem: str, url: str) -> None:
     samples, _, java_template = fetch_page(platform, url)
 
     solution_path = os.path.join(problem_dir, "Solution.java")
-    solution_code = java_template if java_template else SOLUTION_TEMPLATE
+    solution_code = _inject_complexity_javadoc(java_template) if java_template else SOLUTION_TEMPLATE
     with open(solution_path, "w") as f:
         f.write(solution_code)
         if not solution_code.endswith("\n"):

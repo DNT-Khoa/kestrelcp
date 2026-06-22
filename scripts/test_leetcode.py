@@ -49,6 +49,25 @@ POLL_INTERVAL = 0.5
 POLL_MAX_WAIT = 30
 
 
+def grade_case(your: str, expected: str, compare_bit: str | None) -> tuple[bool, str]:
+    """Per-case verdict for one sample case.
+
+    compare_bit is the judge's per-case mark from `compare_result`: "1" means
+    the judge accepted that case (including multi-valid-answer problems where
+    `your` and `expected` differ as strings), "0" means it rejected it. When
+    the bitmap is unavailable for this index, fall back to string equality.
+
+    Returns (ok, note) where note is a non-empty annotation only when the
+    judge accepted an answer that wasn't string-equal to expected.
+    """
+    if compare_bit is not None:
+        ok = compare_bit == "1"
+    else:
+        ok = your == expected
+    note = "  (judge accepted equivalent answer)" if ok and your != expected else ""
+    return ok, note
+
+
 def read_inputs(problem_dir: str) -> list[tuple[int, str]]:
     """Returns [(case_num, in_content), ...] sorted by num.
 
@@ -175,10 +194,13 @@ def main() -> int:
     your = result.get("code_answer") or []
     expect = result.get("expected_code_answer") or []
     stdout_per_case = result.get("code_output") or []
-    # The judge's overall verdict. True means every sample case passed —
-    # even if our string equality below would disagree, because some problems
-    # (two-sum, etc.) accept multiple valid orderings or permutations.
-    judge_accepted = bool(result.get("correct_answer")) or status_msg == "Accepted"
+    # Per-case correctness bitmap from the judge: "1" = case correct, "0" =
+    # wrong. This is the only safe source of truth for multi-valid-answer
+    # problems (two-sum returning [1,0] vs [0,1], "return any valid X"), where
+    # string equality would falsely flag FAIL. status_msg / correct_answer at
+    # the top level of interpret_solution describe the run, not per-case
+    # verdicts, and using them here marks every case PASS once the code ran.
+    compare_result = result.get("compare_result") or ""
 
     print()
     print(f"Judge status: {status_msg}  ({elapsed:.2f}s)")
@@ -214,16 +236,8 @@ def main() -> int:
                 print(f"  stdout:   {stdout_per_case[i]}")
             continue
 
-        # Sample case: defer to the judge's overall verdict when Accepted —
-        # otherwise multi-valid-answer problems (two-sum returning [1,0]
-        # instead of [0,1], "return any valid permutation", etc.) would be
-        # falsely flagged FAIL by string equality.
-        if judge_accepted:
-            ok = True
-            note = "" if y == e else "  (judge accepted equivalent answer)"
-        else:
-            ok = y == e
-            note = ""
+        bit = compare_result[i] if i < len(compare_result) else None
+        ok, note = grade_case(y, e, bit)
         mark = "PASS" if ok else "FAIL"
         if ok:
             pass_count += 1
